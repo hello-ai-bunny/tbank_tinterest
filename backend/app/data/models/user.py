@@ -19,7 +19,8 @@ class User(Base):
     role = Column(SQLEnum(RoleEnum, name='role_enum'), nullable=False, default=RoleEnum.user)
 
     __table_args__ = (
-        Index('ix_users_role', 'role')
+        Index('ix_users_role', 'role'),
     )
 
     profile = relationship('Profile', back_populates='user', uselist=False, cascade='all, delete-orphan')
+    user_interests = relationship('UserInterest', back_populates='user', cascade='all, delete-orphan')
