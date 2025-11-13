@@ -1,5 +1,5 @@
 import os
-from contextlib import  contextmanager
+from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 
@@ -14,8 +14,10 @@ SessionLocal = sessionmaker(
     expire_on_commit=False,
 )
 
+
 class Base(DeclarativeBase):
     pass
+
 
 @contextmanager
 def db_conn():
@@ -28,6 +30,7 @@ def db_conn():
         raise
     finally:
         db.close()
+
 
 def get_db():
     db = SessionLocal()
