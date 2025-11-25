@@ -8,8 +8,8 @@ export default function App() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#FFDC2EFF',
-          colorLink: '#FFDC2EFF',
+          colorPrimary: '#fed400ff',
+          colorLink: '#000000',
           colorTextBase: '#000000',
           colorBgBase: '#FFFFFF',
           fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif',
@@ -17,8 +17,8 @@ export default function App() {
         components: {
           Button: {
             colorPrimary: '#FFDC2EFF',
-            colorPrimaryHover: '#FFDC2EFF',
-            colorPrimaryActive: '#FFDC2EFF',
+            colorPrimaryHover: '#ffd500ff',
+            colorPrimaryActive: '#ffd500ff',
             borderRadius: 15,
           },
           Layout: {
@@ -27,8 +27,8 @@ export default function App() {
             bodyBg: '#FFFFFF',
           },
           Menu: {
-            itemSelectedColor: '#FFDC2EFF',
-            itemHoverColor: '#FFDC2EFF',
+            itemSelectedColor: '#000000',
+            itemHoverColor: '#000000',
           },
         },
       }}
