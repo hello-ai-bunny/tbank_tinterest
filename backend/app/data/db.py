@@ -6,9 +6,10 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./tinterest.db")
 
 engine = create_engine(
-    DATABASE_URL, 
+    DATABASE_URL,
     echo=False,
-    connect_args={'check_same_thread':False} if 'sqlite' in DATABASE_URL else {})
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
+)
 
 SessionLocal = sessionmaker(
     bind=engine,
