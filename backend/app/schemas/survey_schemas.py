@@ -8,5 +8,6 @@ class InterestBase(BaseModel):
     class Config:
         from_attributes = True
 
+
 class InterestList(BaseException):
     interests: list[InterestBase]
