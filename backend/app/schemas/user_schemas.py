@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class UserLogin(BaseModel):
-    email: str
+    login: str
 
 
 class Token(BaseModel):
