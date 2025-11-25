@@ -2,12 +2,23 @@ import { useEffect } from 'react';
 import { Layout, Menu, Dropdown, Avatar, Typography } from 'antd';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 
+const AUTH_KEY = 'authUser';
+
 export default function Shell() {
   const { Header, Sider, Content } = Layout;
   const nav = useNavigate();
   const loc = useLocation();
 
   useEffect(() => {
+    const user = localStorage.getItem(AUTH_KEY);
+
+    // если не авторизован — выкидываем на /auth
+    if (!user) {
+      nav('/auth', { replace: true });
+      return;
+    }
+
+    // если авторизован, но анкету не проходил — на /onboarding
     const done = localStorage.getItem('onboardingDone') === '1';
     if (!done && loc.pathname !== '/onboarding') {
       nav('/onboarding', { replace: true });
@@ -23,8 +34,9 @@ export default function Shell() {
         key: 'logout',
         label: 'Выход',
         onClick: () => {
-          localStorage.removeItem('onboardingDone');
-          nav('/onboarding');
+          localStorage.removeItem(AUTH_KEY);
+          localStorage.removeItem('onboardingDone'); // чтобы после выхода снова гнать через onboarding
+          nav('/auth', { replace: true });
         },
       },
     ],
@@ -32,10 +44,15 @@ export default function Shell() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider width={220} theme="light">
+      <Sider
+        width={220}
+        theme="light"
+        style={{ borderRight: '1px solid #e5e5e5', background: '#fff' }}
+      >
         <div style={{ padding: '12px 16px' }}>
           <Typography.Text strong>Tinterest</Typography.Text>
         </div>
+
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
@@ -46,13 +63,14 @@ export default function Shell() {
         />
       </Sider>
 
-      <Layout>
+      <Layout style={{ background: '#fff' }}>
         <Header
           style={{
             display: 'flex',
             justifyContent: 'flex-end',
             alignItems: 'center',
             background: '#fff',
+            borderBottom: '1px solid #e5e5e5',
           }}
         >
           <Dropdown menu={profileMenu} trigger={['click']}>
@@ -60,8 +78,8 @@ export default function Shell() {
               size="large"
               style={{
                 cursor: 'pointer',
-                background: '#FFDC2EFF',
-                color: '#fff',
+                background: '#fed400',
+                color: '#000',
               }}
             >
               U
