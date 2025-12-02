@@ -1,31 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Tabs, Input, Button, Checkbox, Typography, Space, message } from 'antd';
+import { jwtDecode } from 'jwt-decode';
+import http from '../../shared/api/http';
+import { Endpoints } from '../../shared/api/endpoints';
 
 const { Title, Text, Link } = Typography;
 
 const STORAGE_KEY = 'authUser';
-const USERS_KEY = 'mockUsers';
-
-function getUsers() {
-    try {
-        return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-    } catch {
-        return [];
-    }
-}
-
-// to do
-async function gg() {
-    const response = await fetch("https://randomuser.me/api/")
-
-    const json = await response.json();
-    console.log(json);
-} 
-
-function setUsers(users) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
 
 export default function Auth() {
     const nav = useNavigate();
@@ -36,41 +18,35 @@ export default function Auth() {
 
     const trimmed = useMemo(() => username.trim(), [username]);
 
-    const doLogin = () => {
+    const doLogin = async () => {
         if (!trimmed) return message.warning('Введите логин');
 
-        const users = getUsers();
-        const found = users.find(u => u.username.toLowerCase() === trimmed.toLowerCase());
-
-        if (!found) {
-            return message.error('Такого логина нет. Нажмите “Регистрация” и создайте.');
+        try {
+            const { data } = await http.post(Endpoints.AUTH.LOGIN, { login: trimmed });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            const decoded = jwtDecode(data.access_token);
+            message.success('Вход выполнен');
+            localStorage.setItem('onboardingDone', '0');
+            nav(`/profile/${decoded.sub}`, { replace: true });
+        } catch (error) {
+            message.error(error.response?.data?.detail || 'Ошибка входа');
         }
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(found));
-        message.success('Вход выполнен');
-        localStorage.setItem('onboardingDone', '0');
-        nav(`/profile/${found.id}`, { replace: true });
     };
 
-    const doRegister = () => {
+    const doRegister = async () => {
         if (!trimmed) return message.warning('Введите логин');
         if (!agree) return message.warning('Нужно согласиться с условиями');
 
-        const users = getUsers();
-        const exists = users.some(u => u.username.toLowerCase() === trimmed.toLowerCase());
-        if (exists) return message.error('Такой логин уже существует. Перейдите на “Вход”.');
-
-        const newUser = { id: Date.now(), username: trimmed };
-        users.push(newUser);
-        setUsers(users);
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
-
-        message.success('Аккаунт создан');
-        localStorage.setItem('onboardingDone', '0');
-        nav(`/profile/${newUser.id}`, { replace: true });
-        gg();
-        console.log("y");
+        try {
+            const { data } = await http.post(Endpoints.AUTH.REGISTER, { login: trimmed });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            const decoded = jwtDecode(data.access_token);
+            message.success('Аккаунт создан');
+            localStorage.setItem('onboardingDone', '0');
+            nav(`/profile/${decoded.sub}`, { replace: true });
+        } catch (error) {
+            message.error(error.response?.data?.detail || 'Ошибка регистрации');
+        }
     };
 
     return (
