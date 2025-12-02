@@ -15,9 +15,11 @@ class ProfileBase(BaseModel):
     city: str | None = None
     about: str | None = None
     visibility: str | None = "all"
+    avatar_url: str | None = None
 
 
-class ProfileUpdate(BaseModel):
+
+class ProfileUpdate(ProfileBase):
     avatar_url: str | None = None
 
 

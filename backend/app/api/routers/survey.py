@@ -4,20 +4,20 @@ from ...data.models.user import User
 from ...schemas.survey_schemas import InterestBase
 from ...services import survey_service
 
-router = APIRouter()
+survey_router = APIRouter(prefix="/survey", tags=["survey"])
 
 
-@router.get("/interests", response_model=list[InterestBase])
+@survey_router.get("/interests", response_model=list[InterestBase])
 def get_all_interests():
     return survey_service.get_all_interests()
 
 
-@router.get("/me/interests", response_model=list[InterestBase])
+@survey_router.get("/me/interests", response_model=list[InterestBase])
 def get_my_interests(current_user: User = Depends(get_current_user)):
     return survey_service.get_user_interests(user_id=current_user.id)
 
 
-@router.put("/me/interests", response_model=list[InterestBase])
+@survey_router.put("/me/interests", response_model=list[InterestBase])
 def set_my_interests(
     interests_ids: list[str], current_user: User = Depends(get_current_user)
 ):
