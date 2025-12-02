@@ -4,17 +4,22 @@ from ...data.models.user import User
 from ...schemas.user_schemas import UserResponse, ProfileUpdate
 from ...services import user_service
 
-router = APIRouter()
+user_router = APIRouter(prefix="/users", tags=["users"])
 
 
-@router.get("/me", response_model=UserResponse)
+@user_router.get("", response_model=list[UserResponse])
+def read_users(current_user: User = Depends(get_current_user)):
+    return user_service.get_users()
+
+
+@user_router.get("/me", response_model=UserResponse)
 def read_users_me(current_user: User = Depends(get_current_user)):
     user_with_profile = user_service.get_user_with_profile(user_id=current_user.id)
 
     return user_with_profile
 
 
-@router.patch("/me", response_model=UserResponse)
+@user_router.patch("/me", response_model=UserResponse)
 def update_user_profile(
     profile_data: ProfileUpdate, current_user: User = Depends(get_current_user)
 ):

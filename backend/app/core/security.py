@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
+
 from jose import jwt
-from .config import SECRET_KEY, ALGORITHM
+
+from .config import settings
 
 
 def create_access_token(data: dict) -> str:
@@ -10,4 +12,4 @@ def create_access_token(data: dict) -> str:
 
     to_encode.update({"exp": expire})
 
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
