@@ -1,21 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Avatar,
-  Button,
-  Card,
-  Col,
-  Form,
-  Input,
-  Row,
-  Select,
-  Space,
-  Steps,
-  Tag,
-  Typography,
-  Upload,
-  message,
-} from 'antd';
+import { Avatar, Button, Card, Col, Form, Input, Row, Select, Space, Steps, Tag, Typography, Upload, message, } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -34,7 +19,13 @@ function setUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
-const CITIES = ['Москва', 'Санкт-Петербург', 'Казань', 'Екатеринбург', 'Новосибирск', 'Челябинск', 'Нью-Йорк'];
+const CITIES = [
+  'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань', 'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
+  'Уфа', 'Красноярск', 'Пермь', 'Воронеж', 'Волгоград', 'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск',
+  'Барнаул', 'Ульяновск', 'Иркутск', 'Хабаровск', 'Ярославль', 'Владивосток', 'Махачкала', 'Томск', 'Оренбург', 'Кемерово',
+  'Рязань', 'Астрахань', 'Набережные Челны', 'Пенза', 'Липецк', 'Киров', 'Чебоксары', 'Калининград', 'Курск', 'Тула',
+  'Сочи', 'Белгород', 'Ставрополь', 'Архангельск', 'Владикавказ', 'Грозный', 'Якутск', 'Мурманск', 'Смоленск', 'Брянск',
+];
 
 const INTERESTS = [
   { group: 'Спорт', items: ['Футбол', 'Баскетбол', 'Йога', 'Велоспорт', 'Плавание'] },
@@ -49,7 +40,7 @@ export default function Questionnaire() {
   const [form] = Form.useForm();
 
   const [photoBase64, setPhotoBase64] = useState('');
-  const [selected, setSelected] = useState({}); // { "Спорт": ["Йога", ...], ... }
+  const [selected, setSelected] = useState({});
 
   const authUser = useMemo(() => {
     try {
@@ -62,7 +53,6 @@ export default function Questionnaire() {
   useEffect(() => {
     if (!authUser) return;
 
-    // пробуем подтянуть уже сохранённый профиль (из mockUsers)
     const users = getUsers();
     const u = users.find((x) => x.id === authUser.id);
 
@@ -119,7 +109,7 @@ export default function Questionnaire() {
       const base64 = await fileToBase64(file);
       setPhotoBase64(base64);
       message.success('Фото добавлено');
-      return false; // важно: не загружаем никуда, просто в стейт
+      return false;
     } catch {
       message.error('Не удалось прочитать файл');
       return Upload.LIST_IGNORE;
@@ -140,30 +130,26 @@ export default function Questionnaire() {
         ...values,
         photoBase64,
         interestsByGroup: selected,
-        interests: interestsFlat, // удобная плоская версия
+        interests: interestsFlat,
       };
 
-      // обновляем пользователя в mockUsers
       const users = getUsers();
       const idx = users.findIndex((x) => x.id === authUser.id);
 
       if (idx !== -1) {
         users[idx] = { ...users[idx], profile };
       } else {
-        // на всякий: если вдруг authUser есть, а в массиве нет
         users.push({ ...authUser, profile });
       }
 
       setUsers(users);
 
-      // обновим authUser (чтобы дальше можно было показывать аватарку etc.)
       localStorage.setItem(AUTH_KEY, JSON.stringify({ ...authUser, profile }));
 
       localStorage.setItem('onboardingDone', '1');
       message.success('Анкета сохранена');
       nav('/', { replace: true });
     } catch {
-      // validateFields сам подсветит, если что-то не заполнено
     }
   };
 
@@ -231,7 +217,7 @@ export default function Questionnaire() {
               <Form.Item
                 label="Фамилия"
                 name="lastName"
-                rules={[{ required: true, message: 'Введите фамилию' }]}
+                rules={[{ message: 'Введите фамилию' }]}
               >
                 <Input placeholder="Иванова" />
               </Form.Item>
@@ -256,7 +242,12 @@ export default function Questionnaire() {
                 rules={[{ required: true, message: 'Выберите город' }]}
               >
                 <Select
-                  placeholder="Выберите город"
+                  showSearch
+                  placeholder="Начните вводить город..."
+                  optionFilterProp="label"
+                  filterOption={(input, option) =>
+                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                  }
                   options={CITIES.map((c) => ({ value: c, label: c }))}
                 />
               </Form.Item>
@@ -283,7 +274,7 @@ export default function Questionnaire() {
               <Col key={g.group} xs={24} md={12} lg={8}>
                 <Card
                   size="small"
-                  bordered
+                  variant="borderless"
                   style={{ borderRadius: 16 }}
                   title={<span style={{ fontWeight: 700 }}>{g.group}</span>}
                 >

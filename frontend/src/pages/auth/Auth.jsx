@@ -5,7 +5,6 @@ import { Card, Tabs, Input, Button, Checkbox, Typography, Space, message } from 
 const { Title, Text, Link } = Typography;
 
 const STORAGE_KEY = 'authUser';
-
 const USERS_KEY = 'mockUsers';
 
 function getUsers() {
@@ -15,6 +14,15 @@ function getUsers() {
         return [];
     }
 }
+
+// to do
+async function gg() {
+    const response = await fetch("https://randomuser.me/api/")
+
+    const json = await response.json();
+    console.log(json);
+} 
+
 function setUsers(users) {
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
@@ -57,9 +65,12 @@ export default function Auth() {
         setUsers(users);
 
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+
         message.success('Аккаунт создан');
         localStorage.setItem('onboardingDone', '0');
         nav(`/profile/${newUser.id}`, { replace: true });
+        gg();
+        console.log("y");
     };
 
     return (
