@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Layout, Menu, Dropdown, Avatar, Typography } from 'antd';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { TeamOutlined, MessageOutlined } from '@ant-design/icons';
+
 
 const AUTH_KEY = 'authUser';
 
@@ -12,13 +14,11 @@ export default function Shell() {
   useEffect(() => {
     const user = localStorage.getItem(AUTH_KEY);
 
-    // если не авторизован — выкидываем на /auth
     if (!user) {
       nav('/auth', { replace: true });
       return;
     }
 
-    // если авторизован, но анкету не проходил — на /onboarding
     const done = localStorage.getItem('onboardingDone') === '1';
     if (!done && loc.pathname !== '/onboarding') {
       nav('/onboarding', { replace: true });
@@ -35,7 +35,7 @@ export default function Shell() {
         label: 'Выход',
         onClick: () => {
           localStorage.removeItem(AUTH_KEY);
-          localStorage.removeItem('onboardingDone'); // чтобы после выхода снова гнать через onboarding
+          localStorage.removeItem('onboardingDone');
           nav('/auth', { replace: true });
         },
       },
@@ -57,8 +57,8 @@ export default function Shell() {
           mode="inline"
           selectedKeys={[selectedKey]}
           items={[
-            { key: 'recs', label: <Link to="/">Рекомендации</Link> },
-            { key: 'chats', label: <Link to="/chats">Чаты</Link> },
+            { key: 'recs', label: <Link to="/">{<TeamOutlined/>} Рекомендации</Link> },
+            { key: 'chats', label: <Link to="/chats">{<MessageOutlined />} Чаты</Link> },
           ]}
         />
       </Sider>
