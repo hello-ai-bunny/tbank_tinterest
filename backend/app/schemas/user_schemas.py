@@ -18,7 +18,6 @@ class ProfileBase(BaseModel):
     avatar_url: str | None = None
 
 
-
 class ProfileUpdate(ProfileBase):
     avatar_url: str | None = None
 
