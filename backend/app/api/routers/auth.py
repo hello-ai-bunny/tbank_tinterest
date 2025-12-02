@@ -4,10 +4,12 @@ from app.core.security import create_access_token
 from ...services import user_service
 from ...schemas.user_schemas import UserLogin, Token
 
-router = APIRouter()
+auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+@auth_router.post(
+    "/register", response_model=Token, status_code=status.HTTP_201_CREATED
+)
 def register_user(user_data: UserLogin):
     db_user = user_service.get_user_by_login(login=user_data.login)
     if db_user:
@@ -22,7 +24,7 @@ def register_user(user_data: UserLogin):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/login", response_model=Token)
+@auth_router.post("/login", response_model=Token)
 def login_for_token(form_data: UserLogin):
     user = user_service.get_user_by_login(login=form_data.login)
     if not user:

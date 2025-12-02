@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 *idea/
 # C extensions
+backend_tasks*
 *.so
 *.db
 *.zip

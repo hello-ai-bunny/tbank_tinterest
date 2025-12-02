@@ -29,5 +29,13 @@ def replace_user_interests(user_id: str, interests_ids: list[str]) -> list[Inter
             if db.get(Interest, interest_id):
                 user_interest = UserInterest(user_id=user_id, interest_id=interest_id)
                 db.add(user_interest)
+        
+        db.flush() 
 
-    return get_user_interests(user_id=user_id)
+        return (
+            db.query(Interest)
+            .join(UserInterest)
+            .filter(UserInterest.user_id == user_id)
+            .order_by(Interest.name)
+            .all()
+        )
