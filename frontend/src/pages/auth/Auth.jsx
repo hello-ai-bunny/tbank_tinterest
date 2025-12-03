@@ -27,7 +27,7 @@ export default function Auth() {
             const decoded = jwtDecode(data.access_token);
             message.success('Вход выполнен');
             localStorage.setItem('onboardingDone', '0');
-            nav(`/profile/${decoded.sub}`, { replace: true });
+            nav('/onboarding', { replace: true });
         } catch (error) {
             message.error(error.response?.data?.detail || 'Ошибка входа');
         }
@@ -43,7 +43,7 @@ export default function Auth() {
             const decoded = jwtDecode(data.access_token);
             message.success('Аккаунт создан');
             localStorage.setItem('onboardingDone', '0');
-            nav(`/profile/${decoded.sub}`, { replace: true });
+            nav('/onboarding', { replace: true });
         } catch (error) {
             message.error(error.response?.data?.detail || 'Ошибка регистрации');
         }
