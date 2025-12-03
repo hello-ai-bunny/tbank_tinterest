@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Tabs, Input, Button, Checkbox, Typography, Space, message } from 'antd';
+import { App as AntApp, Card, Tabs, Input, Button, Checkbox, Typography, Space } from 'antd';
 import { jwtDecode } from 'jwt-decode';
 import http from '../../shared/api/http';
 import { Endpoints } from '../../shared/api/endpoints';
@@ -11,6 +11,7 @@ const STORAGE_KEY = 'authUser';
 
 export default function Auth() {
     const nav = useNavigate();
+    const { message } = AntApp.useApp();
 
     const [tab, setTab] = useState('login');
     const [username, setUsername] = useState('');
@@ -51,7 +52,7 @@ export default function Auth() {
 
     return (
         <div className="auth">
-            <Card className="auth__card" bordered={false}>
+            <Card className="auth__card" variant="borderless">
                 <Title level={3} style={{ marginTop: 0, textAlign: 'center' }}>
                     Добро пожаловать в<br />Tinterest!
                 </Title>
@@ -69,7 +70,7 @@ export default function Auth() {
                             key: 'login',
                             label: 'Вход',
                             children: (
-                                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                                <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                                     <div>
                                         <Text strong>Логин</Text>
                                         <Input
@@ -95,7 +96,7 @@ export default function Auth() {
                             key: 'register',
                             label: 'Регистрация',
                             children: (
-                                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                                <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                                     <div>
                                         <Text strong>Логин</Text>
                                         <Input

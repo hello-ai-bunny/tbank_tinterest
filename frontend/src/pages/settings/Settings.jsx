@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Typography, Space, Tabs, Card, Row, Col, Avatar, Form, Input, Select, Tag, Button, Upload, message, } from 'antd';
+import { App as AntApp, Typography, Space, Tabs, Card, Row, Col, Avatar, Form, Input, Select, Tag, Button, Upload, message, } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
@@ -31,6 +31,7 @@ const INTERESTS = [
 ];
 
 export default function Settings() {
+  const { message } = AntApp.useApp();
   const [activeTab, setActiveTab] = useState('profile');
   const [form] = Form.useForm();
   const [photoBase64, setPhotoBase64] = useState('');
@@ -175,7 +176,7 @@ export default function Settings() {
       key: 'profile',
       label: 'Профиль',
       children: (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Title level={4} style={{ margin: 0 }}>Личная информация</Title>
             {!isEditing && (
@@ -332,7 +333,7 @@ export default function Settings() {
       key: 'interests',
       label: 'Интересы',
       children: (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Title level={4} style={{ margin: 0 }}>Ваши интересы</Title>
             {!isEditing && (
@@ -350,7 +351,7 @@ export default function Settings() {
                     <Col key={group.group} xs={24} md={12} lg={8}>
                       <Card
                         size="small"
-                        bordered
+                        variant="outlined"
                         style={{ borderRadius: 16 }}
                         title={<span style={{ fontWeight: 700 }}>{group.group}</span>}
                       >
@@ -432,7 +433,7 @@ export default function Settings() {
   ];
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
       <Title level={3}>Настройки аккаунта</Title>
       <Text>
         Управляйте информацией о своем профиле, интересах, конфиденциальности и уведомлениями.

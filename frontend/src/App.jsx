@@ -1,4 +1,4 @@
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntApp } from 'antd';
 import 'antd/dist/reset.css';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './app/router';
@@ -33,7 +33,9 @@ export default function App() {
         },
       }}
     >
-      <RouterProvider router={router} />
+      <AntApp>
+        <RouterProvider router={router} />
+      </AntApp>
     </ConfigProvider>
   );
 }

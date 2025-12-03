@@ -77,10 +77,6 @@ a {
   border: none;
 }
 
-.ant-card:not(.ant-card-bordered) {
-  box-shadow: none;
-}
-
 .ant-list-item-action-split {
   position: static;
 }

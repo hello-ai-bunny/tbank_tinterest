@@ -82,11 +82,11 @@ export default function UserProfile() {
 
   if (!user) {
     return (
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={16} style={{ width: '100%' }}>
         <Button shape="round" icon={<LeftOutlined />} onClick={goBack} style={{ width: 'fit-content' }}>
           Назад
         </Button>
-        <Card bordered={false}>
+        <Card variant="outlined">
           <Empty description="Пользователь не найден" />
         </Card>
       </Space>
@@ -94,7 +94,7 @@ export default function UserProfile() {
   }
 
   return (
-    <Space direction="vertical" size={14} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={14} style={{ width: '100%' }}>
       <Button shape="round" icon={<LeftOutlined />} onClick={goBack} style={{ width: 'fit-content' }}>
         Назад
       </Button>
@@ -167,7 +167,7 @@ export default function UserProfile() {
             <Title level={4} style={{ marginTop: 0 }}>
               Контакты
             </Title>
-            <Space direction="vertical" size={6}>
+            <Space orientation="vertical" size={6}>
               {email && (
                 <Text type="secondary">
                   <b style={{ color: '#000' }}>Email:</b> {email}
