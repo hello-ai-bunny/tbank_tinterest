@@ -1,227 +1,316 @@
-import { useState, useEffect, useMemo } from 'react';
-import { App as AntApp, Typography, Space, Tabs, Card, Row, Col, Avatar, Form, Input, Select, Tag, Button, Upload, message, } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  App as AntApp, Avatar, Button, Card, Col, Form, Input, Row, Select, Space,
+  Spin, Tabs, Tag, Typography, Upload,
+} from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
+import axios from 'axios';
+import http from '../../shared/api/http';
+import { Endpoints } from '../../shared/api/endpoints';
+
+// TO DO: дописать поля email и телеграма
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 
-const AUTH_KEY = 'authUser';
-const USERS_KEY = 'mockUsers';
-
-function getUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function setUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-const CITIES = ['Москва', 'Санкт-Петербург', 'Казань', 'Екатеринбург', 'Новосибирск', 'Челябинск', 'Нью-Йорк'];
-
-const INTERESTS = [
-  { group: 'Спорт', items: ['Футбол', 'Баскетбол', 'Йога', 'Велоспорт', 'Плавание'] },
-  { group: 'Настольные игры', items: ['Монополия', 'Эрудит', 'Покер', 'Квизы'] },
-  { group: 'IT-клубы', items: ['Программирование', 'Киберспорт', 'ИИ/Машинное обучение'] },
-  { group: 'Музыка', items: ['Рок', 'Поп', 'Классика', 'Электронная'] },
-  { group: 'Путешествия', items: ['Пеший туризм', 'Пляжный отдых', 'Экскурсии', 'Гастрономический туризм'] },
+const CITIES = [
+  'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань', 'Нижний Новгород', 'Челябинск',
+  'Самара', 'Омск', 'Ростов-на-Дону', 'Уфа', 'Красноярск', 'Пермь', 'Воронеж', 'Волгоград', 'Краснодар',
+  'Саратов', 'Тюмень', 'Тольятти', 'Ижевск',
 ];
+
+const GROUP_BY_NAME = {
+  'Спорт': 'Спорт',
+  'Йога': 'Спорт',
+  'Футбол': 'Спорт',
+  'Баскетбол': 'Спорт',
+  'Плавание': 'Спорт',
+  'Велоспорт': 'Спорт',
+
+  'Настольные игры': 'Настольные игры',
+  'Монополия': 'Настольные игры',
+  'Эрудит': 'Настольные игры',
+  'Покер': 'Настольные игры',
+  'Квизы': 'Настольные игры',
+
+  'Программирование': 'IT-клубы',
+  'Киберспорт': 'IT-клубы',
+  'ИИ/Машинное обучение': 'IT-клубы',
+  'Наука': 'IT-клубы',
+
+  'Музыка': 'Музыка',
+  'Рок': 'Музыка',
+  'Поп': 'Музыка',
+  'Классика': 'Музыка',
+  'Электронная': 'Музыка',
+
+  'Кино': 'Другое',
+  'Книги': 'Другое',
+  'Фотография': 'Другое',
+  'Кулинария': 'Другое',
+  'Искусство': 'Другое',
+  'Театр': 'Другое',
+  'Видеоигры': 'Другое',
+  'Психология': 'Другое',
+
+  'Путешествия': 'Путешествия',
+  'Пеший туризм': 'Путешествия',
+  'Пляжный отдых': 'Путешествия',
+  'Экскурсии': 'Путешествия',
+  'Гастрономический туризм': 'Путешествия',
+};
+
+function splitFullName(fullName = '') {
+  const parts = String(fullName).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return { firstName: '', lastName: '' };
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+}
+
+function joinFullName(firstName = '', lastName = '') {
+  return `${String(firstName).trim()} ${String(lastName).trim()}`.trim();
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function uploadToImgBB(file) {
+  const key = import.meta.env.VITE_IMGBB_KEY;
+  if (!key) return null;
+
+  const dataUrl = await fileToBase64(file);
+  const base64 = dataUrl.split(',')[1] || '';
+
+  const form = new FormData();
+  form.append('image', base64);
+
+  const { data } = await axios.post(`https://api.imgbb.com/1/upload?key=${key}`, form);
+  return data?.data?.url || null;
+}
+
+async function setMyInterests(ids) {
+  const payloads = [ids, { interest_ids: ids }, { ids }, { interests: ids }];
+
+  let lastErr = null;
+  for (const payload of payloads) {
+    try {
+      await http.put(Endpoints.SURVEY.MY_INTERESTS, payload);
+      return;
+    } catch (e) {
+      lastErr = e;
+      const status = e?.response?.status;
+      if (status && status >= 500) break;
+    }
+  }
+  throw lastErr;
+}
 
 export default function Settings() {
   const { message } = AntApp.useApp();
-  const [activeTab, setActiveTab] = useState('profile');
   const [form] = Form.useForm();
-  const [photoBase64, setPhotoBase64] = useState('');
-  const [selectedInterests, setSelectedInterests] = useState({});
-  const [isEditing, setIsEditing] = useState(false);
 
-  const authUser = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
-    } catch {
-      return null;
+  const [tab, setTab] = useState('profile');
+  const [loading, setLoading] = useState(true);
+
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingInterests, setSavingInterests] = useState(false);
+
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [allInterests, setAllInterests] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const it of allInterests) {
+      const name = String(it?.name || '').trim();
+      const group = GROUP_BY_NAME[name] || 'Другое';
+      if (!map.has(group)) map.set(group, []);
+      map.get(group).push(it);
     }
-  }, []);
+
+    const order = ['Спорт', 'Настольные игры', 'IT-клубы', 'Музыка', 'Путешествия', 'Другое'];
+    return order.filter((g) => map.has(g)).map((g) => ({ group: g, items: map.get(g) }));
+  }, [allInterests]);
+
+  const toggleInterest = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
-    if (!authUser) return;
+    let alive = true;
 
-    const users = getUsers();
-    const userData = users.find((x) => x.id === authUser.id);
-    const profile = (userData && userData.profile) || {};
+    (async () => {
+      setLoading(true);
+      try {
+        const [meRes, interestsRes, myRes] = await Promise.all([
+          http.get(Endpoints.USERS.ME),
+          http.get(Endpoints.SURVEY.INTERESTS),
+          http.get(Endpoints.SURVEY.MY_INTERESTS),
+        ]);
 
-    form.setFieldsValue({
-      firstName: profile.firstName || '',
-      lastName: profile.lastName || '',
-      email: profile.email || '',
-      telegram: profile.telegram || '',
-      city: profile.city || undefined,
-      about: profile.about || '',
-    });
+        if (!alive) return;
 
-    setPhotoBase64(profile.photoBase64 || '');
-    setSelectedInterests(profile.interestsByGroup || {});
-  }, [authUser, form]);
+        const profile = meRes?.data?.profile ?? {};
+        const { firstName, lastName } = splitFullName(profile?.full_name);
 
-  const fileToBase64 = (file) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+        form.setFieldsValue({
+          firstName,
+          lastName,
+          city: profile?.city || undefined,
+          about: profile?.about || '',
+        });
+
+        setAvatarUrl(profile?.avatar_url || '');
+
+        const all = Array.isArray(interestsRes?.data) ? interestsRes.data : [];
+        setAllInterests(all);
+
+        const mine = Array.isArray(myRes?.data) ? myRes.data : [];
+        setSelectedIds(new Set(mine.map((x) => x?.id).filter(Boolean)));
+      } catch (e) {
+        message.error('Не удалось загрузить настройки');
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [form, message]);
 
   const onPickPhoto = async (file) => {
     try {
       const okType = file.type?.startsWith('image/');
-      if (!okType) {
-        message.error('Можно загрузить только изображение');
-        return Upload.LIST_IGNORE;
+      if (!okType) return Upload.LIST_IGNORE;
+
+      const hostedUrl = await uploadToImgBB(file);
+      if (hostedUrl) {
+        setAvatarUrl(hostedUrl);
+        message.success('Фото загружено');
+        return false;
       }
 
-      const base64 = await fileToBase64(file);
-      setPhotoBase64(base64);
-      message.success('Фото обновлено');
+      const dataUrl = await fileToBase64(file);
+      setAvatarUrl(dataUrl);
+      message.success('Фото добавлено');
       return false;
     } catch {
-      message.error('Не удалось прочитать файл');
+      message.error('Не удалось загрузить фото');
       return Upload.LIST_IGNORE;
     }
   };
 
-  const toggleInterest = (group, item) => {
-    setSelectedInterests((prev) => {
-      const current = new Set(prev[group] || []);
-      if (current.has(item)) {
-        current.delete(item);
-      } else {
-        current.add(item);
-      }
-
-      return {
-        ...prev,
-        [group]: Array.from(current),
-      };
-    });
-  };
-
-  const interestsFlat = useMemo(() => {
-    const all = [];
-    Object.values(selectedInterests).forEach((arr) => (arr || []).forEach((x) => all.push(x)));
-    return all;
-  }, [selectedInterests]);
-
   const saveProfile = async () => {
     try {
       const values = await form.validateFields();
+      const fullName = joinFullName(values.firstName, values.lastName);
 
-      if (!authUser) {
-        message.error('Нет авторизации');
+      if (fullName.trim().length < 2) {
+        message.warning('Имя должно быть минимум 2 символа');
         return;
       }
 
-      const updatedProfile = {
-        ...values,
-        photoBase64,
-        interestsByGroup: selectedInterests,
-        interests: interestsFlat,
-      };
+      setSavingProfile(true);
 
-      const users = getUsers();
-      const userIndex = users.findIndex((x) => x.id === authUser.id);
+      await http.patch(Endpoints.USERS.ME, {
+        full_name: fullName,
+        city: values.city,
+        about: values.about || null,
+        avatar_url: avatarUrl || null,
+        visibility: 'all',
+      });
 
-      if (userIndex !== -1) {
-        users[userIndex] = { ...users[userIndex], profile: updatedProfile };
-      } else {
-        users.push({ ...authUser, profile: updatedProfile });
-      }
-
-      setUsers(users);
-
-      localStorage.setItem(AUTH_KEY, JSON.stringify({ ...authUser, profile: updatedProfile }));
-
-      setIsEditing(false);
-      message.success('Настройки сохранены');
-    } catch (error) {
-      console.error('Ошибка при сохранении:', error);
+      message.success('Профиль сохранён');
+    } catch (e) {
+      message.error(e?.response?.data?.detail || 'Ошибка сохранения профиля');
+    } finally {
+      setSavingProfile(false);
     }
   };
 
-  const cancelEditing = () => {
-    if (!authUser) return;
+  const saveInterests = async () => {
+    try {
+      const ids = Array.from(selectedIds);
+      if (!ids.length) {
+        message.warning('Выберите хотя бы один интерес');
+        return;
+      }
 
-    const users = getUsers();
-    const userData = users.find((x) => x.id === authUser.id);
-    const profile = (userData && userData.profile) || {};
+      setSavingInterests(true);
+      await setMyInterests(ids);
 
-    form.setFieldsValue({
-      firstName: profile.firstName || '',
-      lastName: profile.lastName || '',
-      email: profile.email || '',
-      telegram: profile.telegram || '',
-      city: profile.city || undefined,
-      about: profile.about || '',
-    });
-
-    setPhotoBase64(profile.photoBase64 || '');
-    setSelectedInterests(profile.interestsByGroup || {});
-    setIsEditing(false);
+      message.success('Интересы сохранены');
+    } catch (e) {
+      message.error(e?.response?.data?.detail || 'Ошибка сохранения интересов');
+    } finally {
+      setSavingInterests(false);
+    }
   };
 
-  const tabItems = [
-    {
-      key: 'profile',
-      label: 'Профиль',
-      children: (
-        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Title level={4} style={{ margin: 0 }}>Личная информация</Title>
-            {!isEditing && (
-              <Button type="primary" onClick={() => setIsEditing(true)}>
-                Редактировать
-              </Button>
-            )}
-          </div>
+  if (loading) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Spin />
+      </div>
+    );
+  }
 
-          <Card variant="borderless" style={{ padding: 0 }}>
-            <Row gutter={[24, 16]} align="middle">
-              <Col>
-                <Avatar
-                  size={72}
-                  src={photoBase64 || undefined}
-                  style={{ background: '#f0f0f0', color: '#000' }}
-                >
-                  {!photoBase64 ? 'Фото' : null}
-                </Avatar>
-              </Col>
+  return (
+    <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+      <Title level={3} style={{ margin: 0 }}>Настройки</Title>
+      <Text type="secondary">Здесь можно изменить профиль и интересы.</Text>
 
-              {isEditing && (
-                <Col>
-                  <Upload
-                    accept="image/*"
-                    showUploadList={false}
-                    beforeUpload={onPickPhoto}
-                  >
-                    <Button type="primary" >
-                      Изменить фото
-                    </Button>
-                  </Upload>
-                </Col>
-              )}
-            </Row>
+      <Tabs
+        activeKey={tab}
+        onChange={setTab}
+        items={[
+          {
+            key: 'profile',
+            label: 'Профиль',
+            children: (
+              <Card bordered={false} style={{ borderRadius: 16 }}>
+                <Row gutter={[24, 16]} align="middle">
+                  <Col>
+                    <Avatar
+                      size={72}
+                      src={avatarUrl || undefined}
+                      style={{ background: '#f0f0f0', color: '#000' }}
+                    >
+                      Фото
+                    </Avatar>
+                  </Col>
 
-            <div style={{ height: 24 }} />
+                  <Col>
+                    <Upload accept="image/*" showUploadList={false} beforeUpload={onPickPhoto}>
+                      <Button type="primary" icon={<UploadOutlined />}>
+                        Изменить фото
+                      </Button>
+                    </Upload>
 
-            {isEditing ? (
-              <>
-                <Form
-                  form={form}
-                  layout="vertical"
-                  requiredMark={false}
-                >
+                    <div style={{ marginTop: 6 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        {import.meta.env.VITE_IMGBB_KEY
+                          ? 'Фото сохраняется как ссылка (avatar_url)'
+                          : 'Фото сохраняется как data URL (avatar_url)'}
+                      </Text>
+                    </div>
+                  </Col>
+                </Row>
+
+                <div style={{ height: 16 }} />
+
+                <Form form={form} layout="vertical" requiredMark={false}>
                   <Row gutter={24}>
                     <Col xs={24} md={12}>
                       <Form.Item
@@ -234,24 +323,8 @@ export default function Settings() {
                     </Col>
 
                     <Col xs={24} md={12}>
-                      <Form.Item
-                        label="Фамилия"
-                        name="lastName"
-                        rules={[{ required: true, message: 'Введите фамилию' }]}
-                      >
+                      <Form.Item label="Фамилия" name="lastName">
                         <Input placeholder="Иванова" />
-                      </Form.Item>
-                    </Col>
-
-                    <Col xs={24} md={12}>
-                      <Form.Item label="Email" name="email">
-                        <Input placeholder="ivanova.elena@tinterest.com" />
-                      </Form.Item>
-                    </Col>
-
-                    <Col xs={24} md={12}>
-                      <Form.Item label="Телеграм" name="telegram">
-                        <Input placeholder="@aaaooo" />
                       </Form.Item>
                     </Col>
 
@@ -262,7 +335,12 @@ export default function Settings() {
                         rules={[{ required: true, message: 'Выберите город' }]}
                       >
                         <Select
-                          placeholder="Выберите город"
+                          showSearch
+                          placeholder="Начните вводить город..."
+                          optionFilterProp="label"
+                          filterOption={(input, option) =>
+                            (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                          }
                           options={CITIES.map((c) => ({ value: c, label: c }))}
                         />
                       </Form.Item>
@@ -270,99 +348,41 @@ export default function Settings() {
 
                     <Col xs={24}>
                       <Form.Item label="Обо мне" name="about">
-                        <TextArea
-                          rows={4}
-                          placeholder="Пара слов о себе…"
-                        />
+                        <Input.TextArea rows={4} placeholder="Пара слов о себе…" />
                       </Form.Item>
                     </Col>
                   </Row>
                 </Form>
 
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
-                  <Button onClick={cancelEditing}>
-                    Отмена
-                  </Button>
-                  <Button type="primary" onClick={saveProfile}>
-                    Сохранить изменения
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button type="primary" loading={savingProfile} onClick={saveProfile}>
+                    Сохранить профиль
                   </Button>
                 </div>
-              </>
-            ) : (
-              <div>
-                <Row gutter={[24, 16]}>
-                  <Col span={12}>
-                    <Text strong>Имя:</Text>
-                    <div>{form.getFieldValue('firstName') || 'Не указано'}</div>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>Фамилия:</Text>
-                    <div>{form.getFieldValue('lastName') || 'Не указано'}</div>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>Email:</Text>
-                    <div>{form.getFieldValue('email') || 'Не указано'}</div>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>Телеграм:</Text>
-                    <div>{form.getFieldValue('telegram') || 'Не указано'}</div>
-                  </Col>
-                  <Col span={12}>
-                    <Text strong>Город:</Text>
-                    <div>{form.getFieldValue('city') || 'Не указано'}</div>
-                  </Col>
-                  <Col span={24}>
-                    <Text strong>Обо мне:</Text>
-                    <div style={{
-                      background: '#f5f5f5',
-                      padding: 12,
-                      borderRadius: 8,
-                      marginTop: 4
-                    }}>
-                      {form.getFieldValue('about') || 'Не указано'}
-                    </div>
-                  </Col>
-                </Row>
-              </div>
-            )}
-          </Card>
-        </Space>
-      ),
-    },
-    {
-      key: 'interests',
-      label: 'Интересы',
-      children: (
-        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Title level={4} style={{ margin: 0 }}>Ваши интересы</Title>
-            {!isEditing && (
-              <Button type="primary" onClick={() => setIsEditing(true)}>
-                Редактировать
-              </Button>
-            )}
-          </div>
+              </Card>
+            ),
+          },
+          {
+            key: 'interests',
+            label: 'Интересы',
+            children: (
+              <Card variant="borderless" style={{ borderRadius: 16 }}>
+                <Title level={4} style={{ marginTop: 0 }}>Выберите интересы</Title>
 
-          <Card variant="borderless" style={{ padding: 0 }}>
-            {isEditing ? (
-              <>
                 <Row gutter={[16, 16]}>
-                  {INTERESTS.map((group) => (
-                    <Col key={group.group} xs={24} md={12} lg={8}>
-                      <Card
-                        size="small"
-                        variant="outlined"
-                        style={{ borderRadius: 16 }}
-                        title={<span style={{ fontWeight: 700 }}>{group.group}</span>}
-                      >
+                  {grouped.map((g) => (
+                    <Col key={g.group} xs={24} md={12} lg={8}>
+                      <Card size="small" variant="borderless" style={{ borderRadius: 16 }}>
+                        <div style={{ fontWeight: 700, marginBottom: 10 }}>{g.group}</div>
+
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          {group.items.map((item) => {
-                            const active = (selectedInterests[group.group] || []).includes(item);
+                          {g.items.map((it) => {
+                            const active = selectedIds.has(it.id);
                             return (
                               <Tag.CheckableTag
-                                key={item}
+                                key={it.id}
                                 checked={active}
-                                onChange={() => toggleInterest(group.group, item)}
+                                onChange={() => toggleInterest(it.id)}
                                 style={{
                                   padding: '4px 10px',
                                   borderRadius: 999,
@@ -373,7 +393,7 @@ export default function Settings() {
                                   userSelect: 'none',
                                 }}
                               >
-                                {item}
+                                {it.name}
                               </Tag.CheckableTag>
                             );
                           })}
@@ -383,67 +403,17 @@ export default function Settings() {
                   ))}
                 </Row>
 
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
-                  <Button onClick={cancelEditing}>
-                    Отмена
-                  </Button>
-                  <Button type="primary" onClick={saveProfile}>
+                <div style={{ height: 16 }} />
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button type="primary" loading={savingInterests} onClick={saveInterests}>
                     Сохранить интересы
                   </Button>
                 </div>
-              </>
-            ) : (
-              <div>
-                {INTERESTS.map((group) => {
-                  const groupInterests = selectedInterests[group.group] || [];
-                  if (groupInterests.length === 0) return null;
-
-                  return (
-                    <div key={group.group} style={{ marginBottom: 16 }}>
-                      <Text strong>{group.group}:</Text>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                        {groupInterests.map((interest) => (
-                          <Tag
-                            key={interest}
-                            style={{
-                              padding: '4px 10px',
-                              borderRadius: 999,
-                              background: '#f0f0f0',
-                              color: '#000',
-                              border: '1px solid #e0e0e0',
-                            }}
-                          >
-                            {interest}
-                          </Tag>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {interestsFlat.length === 0 && (
-                  <Text type="secondary">Интересы не выбраны</Text>
-                )}
-              </div>
-            )}
-          </Card>
-        </Space>
-      ),
-    },
-  ];
-
-  return (
-    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-      <Title level={3}>Настройки аккаунта</Title>
-      <Text>
-        Управляйте информацией о своем профиле, интересах, конфиденциальности и уведомлениями.
-      </Text>
-
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={tabItems}
-        tabBarStyle={{ marginBottom: 24 }}
+              </Card>
+            ),
+          },
+        ]}
       />
     </Space>
   );

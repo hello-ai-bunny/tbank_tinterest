@@ -165,26 +165,33 @@ export default function Questionnaire() {
         if (onboardingDone) {
           try {
             const meRes = await http.get(Endpoints.USERS.ME);
-            const profile = meRes?.data?.profile || {};
-            const { firstName, lastName } = splitFullName(profile?.full_name);
+            const profile = (meRes?.data?.profile ?? meRes?.data ?? {});
+            const fullName = String(profile?.full_name ?? '').trim();
 
+            const parts = fullName.split(/\s+/).filter(Boolean);
             form.setFieldsValue({
-              firstName,
-              lastName,
+              firstName: parts[0] ?? '',
+              lastName: parts.slice(1).join(' ') ?? '',
               city: profile?.city || undefined,
               about: profile?.about || '',
             });
 
             setAvatarUrl(profile?.avatar_url || '');
-          } catch {
-          }
+          } catch { }
 
           try {
             const myRes = await http.get(Endpoints.SURVEY.MY_INTERESTS);
-            const mine = Array.isArray(myRes?.data) ? myRes.data : [];
-            setSelectedIds(new Set(mine.map((x) => x.id).filter(Boolean)));
-          } catch {
-          }
+            const raw = myRes?.data;
+
+            let ids = [];
+            if (Array.isArray(raw)) {
+              ids = raw.map((x) => (typeof x === 'number' ? x : x?.id)).filter(Boolean);
+            } else if (Array.isArray(raw?.interest_ids)) {
+              ids = raw.interest_ids.filter(Boolean);
+            }
+
+            setSelectedIds(new Set(ids));
+          } catch { }
         }
       } catch (e) {
         message.error('Не удалось загрузить интересы');
@@ -261,7 +268,7 @@ export default function Questionnaire() {
   };
 
   return (
-    <div style={{ maxWidth: 1080 }}>
+    <div  >
       <Steps
         current={0}
         items={[{ title: 'Анкета' }, { title: 'Рекомендации' }]}
