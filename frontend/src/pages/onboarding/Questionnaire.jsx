@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Avatar, Button, Card, Col, Form, Input, Row, Space, Steps, Tag,
-  Typography, Upload, message, Select, Spin,
+  App as AntApp, Typography, Upload, Select, Spin,
 } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import http from '../../shared/api/http';
 import { Endpoints } from '../../shared/api/endpoints';
+
+// TO DO: дописать поля email и телеграма
 
 const { Title, Text } = Typography;
 
@@ -116,6 +118,7 @@ async function setMyInterests(ids) {
 export default function Questionnaire() {
   const nav = useNavigate();
   const [form] = Form.useForm();
+  const { message } = AntApp.useApp();
 
   const onboardingDone = useMemo(() => localStorage.getItem('onboardingDone') === '1', []);
   const [loading, setLoading] = useState(true);
@@ -269,7 +272,7 @@ export default function Questionnaire() {
         Личная информация
       </Title>
 
-      <Card bordered={false} style={{ padding: 0 }}>
+      <Card variant="outlined" style={{ padding: 0 }}>
         {loading ? (
           <div style={{ padding: 24 }}>
             <Spin />
