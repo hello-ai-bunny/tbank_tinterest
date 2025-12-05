@@ -17,7 +17,10 @@ class Profile(Base):
     user_id = Column(
         String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    full_name = Column(String(120))
+    first_name = Column(String(40))
+    last_name = Column(String(40))
+    email = Column(String(120))
+    telegram = Column(String(120))
     city = Column(String(120))
     about = Column(Text)
     avatar_url = Column(String(500))
@@ -29,7 +32,8 @@ class Profile(Base):
 
     __table_args__ = (
         Index("ix_profiles_city", "city"),
-        Index("ix_profile_full_name", "full_name"),
+        Index("ix_profile_first_name", "first_name"),
+        Index("ix_profile_last_name", "last_name"),
     )
 
     user = relationship("User", back_populates="profile")

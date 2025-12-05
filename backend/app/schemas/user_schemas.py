@@ -11,7 +11,10 @@ class Token(BaseModel):
 
 
 class ProfileBase(BaseModel):
-    full_name: str = Field(..., min_length=2, max_length=80)
+    first_name: str | None = Field(None, min_length=1, max_length=40)
+    last_name: str | None = Field(None, min_length=1, max_length=40)
+    email: str | None = None
+    telegram: str | None = None
     city: str | None = None
     about: str | None = Field(None, max_length=500)
     visibility: str | None = "all"
@@ -19,7 +22,10 @@ class ProfileBase(BaseModel):
 
 
 class ProfileUpdate(BaseModel):
-    full_name: str | None = Field(None, min_length=2, max_length=80)
+    first_name: str | None = Field(None, min_length=1, max_length=40)
+    last_name: str | None = Field(None, min_length=1, max_length=40)
+    email: str | None = None
+    telegram: str | None = None
     city: str | None = None
     about: str | None = Field(None, max_length=500)
     visibility: str | None = None
