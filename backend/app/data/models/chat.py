@@ -42,3 +42,6 @@ class Chat(Base):
     messages = relationship(
         "Message", back_populates="chat", cascade="all, delete-orphan"
     )
+
+    direct_a_user = relationship("User", foreign_keys=[direct_a])
+    direct_b_user = relationship("User", foreign_keys=[direct_b])
