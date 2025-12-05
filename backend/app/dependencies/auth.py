@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
@@ -40,3 +40,24 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate token",
         )
+
+
+async def get_current_user_from_websocket(
+    token: str | None = Query(None), db: Session = Depends(get_db)
+) -> User | None:
+    if token is None:
+        return None
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+
+        user = user_service.get_user_by_id(user_id=user_id)
+        if not user:
+            return None
+        return user
+    except (JWTError, ValueError):
+        return None
