@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from ...dependencies.auth import get_current_user
+from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
+from ...core.websockets import manager
+from ...dependencies.auth import get_current_user, get_current_user_from_websocket
 from ...data.models.user import User
 from ...schemas import chat_schemas
 from ...services import chat_service, user_service
@@ -87,16 +88,40 @@ def get_messages(chat_id: str, current_user: User = Depends(get_current_user)):
     response_model=chat_schemas.MessageResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def send_message(
+async def send_message(
     chat_id: str,
     message_data: chat_schemas.MessageCreate,
     current_user: User = Depends(get_current_user),
 ):
-    chat = chat_service.get_chat_by_id(chat_id) 
+    chat = chat_service.get_chat_by_id(chat_id)
     if not chat or (current_user.id not in [chat.direct_a, chat.direct_b]):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
-    new_message = chat_service.create_message(
+    new_message = await chat_service.create_message(
         chat_id=chat_id, author_id=current_user.id, msg_data=message_data
     )
     return new_message
+
+
+@chat_router.websocket("/ws/{chat_id}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    chat_id: str,
+    user: User = Depends(get_current_user_from_websocket),
+):
+    if user is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    chat = chat_service.get_chat_by_id(chat_id)
+    if not chat or (user.id not in [chat.direct_a, chat.direct_b]):
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await manager.connect(chat_id, user.id, websocket)
+    try:
+        while True:
+            # нужно для поддержания вебсокета открытым
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(chat_id, user.id)

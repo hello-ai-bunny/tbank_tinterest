@@ -1,11 +1,12 @@
 from sqlalchemy.orm import joinedload, aliased
 from sqlalchemy import or_
+from ..core.websockets import manager
 from ..data.db import db_conn
 from ..data.models.user import User
 from ..data.models.profile import Profile
 from ..data.models.chat import Chat, ChatType
 from ..data.models.message import Message
-from ..schemas.chat_schemas import MessageCreate
+from ..schemas.chat_schemas import MessageCreate, MessageResponse
 
 
 def get_user_chats(user_id: str):
@@ -71,7 +72,9 @@ def get_chat_messages(chat_id: str) -> list[Message]:
         )
 
 
-def create_message(chat_id: str, author_id: str, msg_data: MessageCreate) -> Message:
+async def create_message(
+    chat_id: str, author_id: str, msg_data: MessageCreate
+) -> Message:
     with db_conn() as db:
         new_message = Message(
             chat_id=chat_id, author_id=author_id, text=msg_data.text
@@ -79,4 +82,8 @@ def create_message(chat_id: str, author_id: str, msg_data: MessageCreate) -> Mes
         db.add(new_message)
         db.commit()
         db.refresh(new_message)
-        return new_message
+
+    message_schema = MessageResponse.model_validate(new_message)
+    await manager.broadcast(chat_id, message_schema.model_dump_json())
+
+    return new_message
