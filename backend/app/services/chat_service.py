@@ -11,25 +11,13 @@ from ..schemas.chat_schemas import MessageCreate, MessageResponse
 
 def get_user_chats(user_id: str):
     with db_conn() as db:
-        participant_user = aliased(User)
-        participant_profile = aliased(Profile)
-
         chats = (
             db.query(Chat)
-            .join(
-                participant_user,
-                or_(
-                    Chat.direct_a == participant_user.id,
-                    Chat.direct_b == participant_user.id,
-                ),
-            )
-            .outerjoin(participant_profile, participant_user.id == participant_profile.user_id)
-            .filter(
-                or_(Chat.direct_a == user_id, Chat.direct_b == user_id),
-                participant_user.id != user_id,
-            )
+            .filter(or_(Chat.direct_a == user_id, Chat.direct_b == user_id))
             .options(
-                joinedload(Chat.messages).load_only(Message.id, Message.text, Message.created_at, Message.author_id)
+                joinedload(Chat.messages),
+                joinedload(Chat.direct_a_user).joinedload(User.profile),
+                joinedload(Chat.direct_b_user).joinedload(User.profile),
             )
             .all()
         )

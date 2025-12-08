@@ -9,7 +9,7 @@ user_router = APIRouter(prefix="/users", tags=["users"])
 
 @user_router.get("", response_model=list[UserResponse])
 def read_users(current_user: User = Depends(get_current_user)):
-    return user_service.get_users()
+    return user_service.get_users(current_user_id=current_user.id)
 
 
 @user_router.get("/me", response_model=UserResponse)

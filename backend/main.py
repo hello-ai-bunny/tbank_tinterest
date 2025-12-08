@@ -1,10 +1,14 @@
 import logging
 from contextlib import asynccontextmanager
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
+from app.core.websockets import manager
+from app.dependencies.auth import get_current_user_from_websocket
+from app.services import chat_service
+from app.data.models.user import User
 from app.core.initial_data import seed_interests
 from app.core.logging_config import setup_logging
 
@@ -38,6 +42,29 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
+
+@app.websocket("/ws/chats/{chat_id}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    chat_id: str,
+    user: User = Depends(get_current_user_from_websocket),
+):
+    if user is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    chat = chat_service.get_chat_by_id(chat_id)
+    if not chat or (user.id not in [chat.direct_a, chat.direct_b]):
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await manager.connect(chat_id, user.id, websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(chat_id, user.id)
 
 
 @app.get("/")

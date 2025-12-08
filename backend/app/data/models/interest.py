@@ -18,3 +18,9 @@ class Interest(Base):
     )
 
     user_interests = relationship("UserInterest", back_populates="interest")
+    users = relationship(
+        "User",
+        secondary="user_interests",
+        back_populates="interests",
+        overlaps="user_interests",
+    )
