@@ -1,558 +1,251 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Layout,
-  Avatar,
-  Input,
-  Button,
-  List,
-  Badge,
-  Typography,
-  Space,
-  Card,
-  Divider,
-  Row,
-  Col,
-  message,
+  Layout, Avatar, Input, Button, List, Typography, Space, Spin,
+  App as AntApp, Row, Col
 } from 'antd';
-import {
-  SearchOutlined,
-  SendOutlined,
-  UserOutlined,
-  ArrowLeftOutlined,
-} from '@ant-design/icons';
+import { SearchOutlined, SendOutlined, UserOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import http from '../../shared/api/http';
+import { Endpoints } from '../../shared/api/endpoints';
+import { useMediaQuery } from 'react-responsive';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Header, Content, Sider } = Layout;
 
-// Константы для localStorage
-const AUTH_KEY = 'authUser';
-const USERS_KEY = 'mockUsers';
-const CHATS_KEY = 'chats';
-
-// Вспомогательные функции
-function getAuthUser() {
+function getAuthToken() {
   try {
-    return JSON.parse(localStorage.getItem(AUTH_KEY) || 'null');
+    const raw = localStorage.getItem('authUser');
+    if (!raw) return null;
+    return JSON.parse(raw)?.access_token;
   } catch {
     return null;
   }
 }
 
-function getUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  } catch {
-    return [];
-  }
+function getAuthUserId() {
+    try {
+        const raw = localStorage.getItem('authUser');
+        if (!raw) return null;
+        const token = JSON.parse(raw)?.access_token;
+        if (!token) return null;
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.sub;
+    } catch {
+        return null;
+    }
 }
 
-function getChats() {
-  try {
-    return JSON.parse(localStorage.getItem(CHATS_KEY) || '{}');
-  } catch {
-    return {};
-  }
-}
+const ChatList = ({ chatList, selectedChat, onSelectChat }) => (
+  <div style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Title level={4} style={{ margin: 0, marginBottom: 16 }}>Чаты</Title>
+    <List
+      dataSource={chatList}
+      renderItem={(chat) => (
+        <List.Item
+          style={{ padding: 12, borderRadius: 12, cursor: 'pointer', backgroundColor: selectedChat?.id === chat.id ? '#f0f0f0' : 'transparent' }}
+          onClick={() => onSelectChat(chat)}
+        >
+          <List.Item.Meta
+            avatar={<Avatar size={48} src={chat.participant.avatar_url} icon={<UserOutlined />} />}
+            title={<Text strong>{`${chat.participant.first_name || ''} ${chat.participant.last_name || ''}`.trim()}</Text>}
+            description={<Paragraph ellipsis={{ rows: 1 }} style={{ margin: 0 }}>{chat.last_message?.text || '...'}</Paragraph>}
+          />
+        </List.Item>
+      )}
+    />
+  </div>
+);
 
-function saveChats(chats) {
-  localStorage.setItem(CHATS_KEY, JSON.stringify(chats));
-}
+const ChatWindow = ({ chat, messages, currentUserId, onSendMessage, onBack }) => {
+  const [messageText, setMessageText] = useState('');
+  const messagesEndRef = useRef(null);
+  const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
 
-// Генерация уникального ID для чата
-function generateChatId(userId1, userId2) {
-  return [userId1, userId2].sort((a, b) => a - b).join('_');
-}
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-// Получение информации о пользователе
-function getUserInfo(userId) {
-  const users = getUsers();
-  const user = users.find(u => u.id === userId);
-  if (!user) return null;
-  
-  const profile = user.profile || {};
-  const fullName = `${profile.firstName || ''} ${profile.lastName || ''}`.trim();
-  
-  return {
-    id: user.id,
-    username: user.username,
-    firstName: profile.firstName,
-    lastName: profile.lastName,
-    fullName: fullName || user.username,
-    photoBase64: profile.photoBase64,
-    city: profile.city,
+  const handleSend = () => {
+    if (!messageText.trim()) return;
+    onSendMessage(messageText);
+    setMessageText('');
   };
-}
+
+  return (
+    <Layout style={{ height: '100%', background: '#fff' }}>
+      <Header style={{ background: '#fff', borderBottom: '1px solid #e5e5e5', padding: '0 16px', display: 'flex', alignItems: 'center' }}>
+        {isMobile && (
+          <Button icon={<ArrowLeftOutlined />} type="text" onClick={onBack} style={{ marginRight: 8 }} />
+        )}
+        <Avatar size={40} src={chat.participant.avatar_url} icon={<UserOutlined />} />
+        <div style={{ marginLeft: 12 }}>
+          <Text strong>{`${chat.participant.first_name || ''} ${chat.participant.last_name || ''}`.trim()}</Text>
+        </div>
+      </Header>
+      
+      <Content style={{ padding: '16px', overflowY: 'auto', background: '#fafafa' }}>
+        {messages.map((msg) => {
+          const isMyMessage = msg.author_id === currentUserId;
+          return (
+            <div key={msg.id} style={{ display: 'flex', justifyContent: isMyMessage ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
+              <div style={{ background: isMyMessage ? '#FFDC2E' : '#f0f0f0', borderRadius: 18, padding: '8px 14px', maxWidth: '70%' }}>
+                <Text>{msg.text}</Text>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </Content>
+      
+      <div style={{ padding: '16px', borderTop: '1px solid #e5e5e5' }}>
+        <Space.Compact style={{ width: '100%' }}>
+            <TextArea
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              placeholder="Напишите сообщение..."
+              autoSize={{ minRows: 1, maxRows: 4 }}
+              onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+            />
+            <Button type="primary" icon={<SendOutlined />} onClick={handleSend} disabled={!messageText.trim()} />
+        </Space.Compact>
+      </div>
+    </Layout>
+  );
+};
+
 
 export default function Chats() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const messagesEndRef = useRef(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [messageText, setMessageText] = useState('');
-  const [selectedChatId, setSelectedChatId] = useState(null);
-  const [chats, setChats] = useState({});
-  const [users, setUsers] = useState([]);
+  const { message } = AntApp.useApp();
+  const ws = useRef(null);
+
+  const [loading, setLoading] = useState(true);
+  const [chatList, setChatList] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
   
-  const currentUser = useMemo(() => getAuthUser(), []);
-  
-  // Получаем ID пользователя для чата из location state
-  const toUserId = useMemo(() => {
-    return location.state?.toUserId || null;
-  }, [location.state]);
-  
-  // Загрузка данных
+  const currentUserId = useMemo(() => getAuthUserId(), []);
+  const toUserId = location.state?.toUserId;
+  const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
+
+  // Load chat list
   useEffect(() => {
-    if (!currentUser) {
-      message.error('Требуется авторизация');
-      navigate('/auth');
-      return;
-    }
-    
-    const loadedUsers = getUsers();
-    const filteredUsers = loadedUsers.filter(u => u.id !== currentUser.id);
-    setUsers(filteredUsers);
-    
-    const loadedChats = getChats();
-    setChats(loadedChats);
-    
-    // Если перешли с карточки пользователя, открываем чат с ним
-    if (toUserId) {
-      const chatId = generateChatId(currentUser.id, toUserId);
-      setSelectedChatId(chatId);
-      
-      // Создаем пустой чат, если его нет
-      if (!loadedChats[chatId]) {
-        const newChats = {
-          ...loadedChats,
-          [chatId]: {
-            participants: [currentUser.id, toUserId],
-            messages: [],
-            unreadCount: { [currentUser.id]: 0 }
-          }
-        };
-        setChats(newChats);
-        saveChats(newChats);
+    let alive = true;
+    async function loadChats() {
+      setLoading(true);
+      try {
+        const { data } = await http.get('/chats');
+        if (alive) {
+          setChatList(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        message.error('Не удалось загрузить список чатов');
+      } finally {
+        if (alive) setLoading(false);
       }
     }
-  }, [currentUser, toUserId, navigate]);
-  
-  // Прокрутка к последнему сообщению
+    loadChats();
+    return () => { alive = false; };
+  }, [message]);
+
+  // Handle opening a chat from recommendation or list
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedChatId, chats]);
+    if (!toUserId) return;
+    async function openChatFromNav() {
+      try {
+        const { data } = await http.get(`/chats/${toUserId}`);
+        setSelectedChat(data);
+      } catch {
+        message.error('Не удалось открыть чат');
+      }
+    }
+    openChatFromNav();
+  }, [toUserId, message]);
   
-  // Обработка отправки сообщения
-  const handleSendMessage = () => {
-    if (!messageText.trim() || !selectedChatId || !currentUser) return;
-    
-    const newMessage = {
-      id: Date.now(),
-      senderId: currentUser.id,
-      text: messageText.trim(),
-      timestamp: new Date().toISOString(),
-      isRead: false,
+  // Load messages for selected chat
+  useEffect(() => {
+    if (!selectedChat) return;
+    let alive = true;
+    async function loadMessages() {
+      try {
+        const { data } = await http.get(`/chats/${selectedChat.id}/messages`);
+        if (alive) {
+          setMessages(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        message.error('Не удалось загрузить сообщения');
+      }
+    }
+    loadMessages();
+    return () => { alive = false; };
+  }, [selectedChat, message]);
+
+  // WebSocket connection
+  useEffect(() => {
+    if (!selectedChat) return;
+    const token = getAuthToken();
+    if (!token) {
+      message.error('Требуется авторизация для чата');
+      return;
+    }
+
+    const wsUrl = `ws://localhost:8000/ws/chats/${selectedChat.id}?token=${token}`;
+    ws.current = new WebSocket(wsUrl);
+
+    ws.current.onopen = () => console.log(`WebSocket connected to chat ${selectedChat.id}`);
+    ws.current.onmessage = (event) => {
+      const newMessage = JSON.parse(event.data);
+      setMessages((prev) => [...prev, newMessage]);
     };
-    
-    const updatedChats = { ...chats };
-    const chat = updatedChats[selectedChatId];
-    
-    if (!chat) {
-      // Создаем новый чат
-      const participantIds = selectedChatId.split('_').map(Number);
-      const otherUserId = participantIds.find(id => id !== currentUser.id);
-      
-      updatedChats[selectedChatId] = {
-        participants: participantIds,
-        messages: [newMessage],
-        unreadCount: { 
-          [currentUser.id]: 0,
-          [otherUserId]: 1 
-        }
-      };
-    } else {
-      // Добавляем сообщение в существующий чат
-      chat.messages.push(newMessage);
-      
-      // Обновляем счетчик непрочитанных для другого пользователя
-      const otherUserId = chat.participants.find(id => id !== currentUser.id);
-      chat.unreadCount = {
-        ...chat.unreadCount,
-        [otherUserId]: (chat.unreadCount[otherUserId] || 0) + 1,
-      };
-    }
-    
-    setChats(updatedChats);
-    saveChats(updatedChats);
-    setMessageText('');
-  };
-  
-  // Обработка нажатия Enter (без Shift - отправка)
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+    ws.current.onclose = () => console.log('WebSocket disconnected');
+    ws.current.onerror = (err) => console.error('WebSocket error:', err);
+
+    return () => ws.current?.close();
+  }, [selectedChat, message]);
+
+  const handleSendMessage = async (text) => {
+    if (!text || !selectedChat) return;
+    try {
+      await http.post(`/chats/${selectedChat.id}/messages`, { text });
+    } catch {
+      message.error('Не удалось отправить сообщение');
     }
   };
   
-  // Открытие чата с пользователем
-  const openChat = (userId) => {
-    const chatId = generateChatId(currentUser.id, userId);
-    
-    // Создаем чат, если его нет
-    if (!chats[chatId]) {
-      const newChats = {
-        ...chats,
-        [chatId]: {
-          participants: [currentUser.id, userId],
-          messages: [],
-          unreadCount: { [currentUser.id]: 0 }
-        }
-      };
-      setChats(newChats);
-      saveChats(newChats);
-    }
-    
-    setSelectedChatId(chatId);
-    
-    // Помечаем сообщения как прочитанные
-    if (chats[chatId]?.unreadCount[currentUser.id] > 0) {
-      const updatedChats = { ...chats };
-      updatedChats[chatId].unreadCount[currentUser.id] = 0;
-      setChats(updatedChats);
-      saveChats(updatedChats);
-    }
-  };
-  
-  // Получение информации о выбранном чате
-  const selectedChat = selectedChatId ? chats[selectedChatId] : null;
-  const otherUserId = selectedChat?.participants?.find(id => id !== currentUser.id);
-  const otherUserInfo = otherUserId ? getUserInfo(otherUserId) : null;
-  
-  // Фильтрация пользователей для списка чатов
-  const filteredUsers = useMemo(() => {
-    const query = searchQuery.toLowerCase();
-    return users.filter(user => {
-      const userInfo = getUserInfo(user.id);
-      return (
-        userInfo.fullName.toLowerCase().includes(query) ||
-        userInfo.username.toLowerCase().includes(query) ||
-        userInfo.city?.toLowerCase().includes(query)
-      );
-    });
-  }, [users, searchQuery]);
-  
-  // Подготовка списка чатов с последним сообщением
-  const chatList = useMemo(() => {
-    return filteredUsers.map(user => {
-      const userInfo = getUserInfo(user.id);
-      const chatId = generateChatId(currentUser.id, user.id);
-      const chat = chats[chatId];
-      const lastMessage = chat?.messages?.[chat.messages.length - 1];
-      const unreadCount = chat?.unreadCount?.[currentUser.id] || 0;
-      
-      return {
-        id: user.id,
-        chatId,
-        userInfo,
-        lastMessage: lastMessage?.text || 'Начните диалог',
-        lastMessageTime: lastMessage?.timestamp,
-        unreadCount,
-        isOnline: Math.random() > 0.5, // Заглушка для статуса онлайн
-      };
-    });
-  }, [filteredUsers, chats, currentUser.id]);
-  
-  // Стили для сообщений
-  const messageStyles = {
-    container: {
-      maxWidth: '100%',
-      marginBottom: 16,
-      display: 'flex',
-      flexDirection: 'column',
-    },
-    myMessage: {
-      alignSelf: 'flex-end',
-      backgroundColor: '#FFDC2E',
-      color: '#000',
-      borderRadius: '18px 18px 4px 18px',
-      padding: '12px 16px',
-      maxWidth: '70%',
-      marginLeft: 'auto',
-    },
-    otherMessage: {
-      alignSelf: 'flex-start',
-      backgroundColor: '#f0f0f0',
-      color: '#000',
-      borderRadius: '18px 18px 18px 4px',
-      padding: '12px 16px',
-      maxWidth: '70%',
-    },
-    time: {
-      fontSize: '11px',
-      color: '#888',
-      marginTop: 4,
-    },
-  };
-  
-  return (
-    <Layout style={{ height: 'calc(100vh - 112px)', background: '#fff' }}>
-      {/* Левая панель - список чатов */}
-      <Sider
-        width={320}
-        style={{
-          background: '#fff',
-          borderRight: '1px solid #e5e5e5',
-          padding: 16,
-        }}
-      >
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Title level={4} style={{ margin: 0 }}>Чаты</Title>
-          
-          <Input
-            placeholder="Поиск чатов..."
-            prefix={<SearchOutlined />}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ borderRadius: 12 }}
-          />
-          
-          <Divider style={{ margin: '8px 0' }} />
-          
-          <List
-            dataSource={chatList}
-            style={{ width: '100%' }}
-            renderItem={(item) => (
-              <List.Item
-                style={{
-                  padding: '12px',
-                  borderRadius: 12,
-                  cursor: 'pointer',
-                  backgroundColor: selectedChatId === item.chatId ? '#f9f9f9' : 'transparent',
-                  border: selectedChatId === item.chatId ? '1px solid #e0e0e0' : 'none',
-                  marginBottom: 8,
-                }}
-                onClick={() => openChat(item.id)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                  <Badge
-                    dot={item.isOnline}
-                    color="green"
-                    offset={[-4, 32]}
-                  >
-                    <Avatar
-                      size={48}
-                      src={item.userInfo.photoBase64}
-                      icon={!item.userInfo.photoBase64 && <UserOutlined />}
-                      style={{ 
-                        background: item.userInfo.photoBase64 ? 'transparent' : '#f0f0f0',
-                        color: '#000',
-                      }}
-                    />
-                  </Badge>
-                  
-                  <div style={{ marginLeft: 12, flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text strong style={{ fontSize: 14 }}>
-                        {item.userInfo.fullName}
-                      </Text>
-                      {item.unreadCount > 0 && (
-                        <Badge
-                          count={item.unreadCount}
-                          style={{ backgroundColor: '#FFDC2E', color: '#000' }}
-                        />
-                      )}
-                    </div>
-                    
-                    <Paragraph
-                      ellipsis={{ rows: 1 }}
-                      style={{ 
-                        margin: 0,
-                        fontSize: 12,
-                        color: '#666',
-                        maxWidth: '100%',
-                      }}
-                    >
-                      {item.lastMessage}
-                    </Paragraph>
-                    
-                    {item.lastMessageTime && (
-                      <Text type="secondary" style={{ fontSize: 11 }}>
-                        {new Date(item.lastMessageTime).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </Text>
-                    )}
-                  </div>
-                </div>
-              </List.Item>
-            )}
-            locale={{ emptyText: 'Нет активных чатов' }}
-          />
-        </Space>
-      </Sider>
-      
-      {/* Правая часть - сам чат */}
-      <Layout style={{ background: '#fff' }}>
+  if (loading) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Spin size="large" /></div>;
+  }
+
+  if (isMobile) {
+    return (
+      <div style={{ height: 'calc(100vh - 112px)' }}>
         {selectedChat ? (
-          <>
-            {/* Заголовок чата */}
-            <Header
-              style={{
-                background: '#fff',
-                borderBottom: '1px solid #e5e5e5',
-                padding: '0 24px',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                <Button
-                  type="text"
-                  icon={<ArrowLeftOutlined />}
-                  onClick={() => setSelectedChatId(null)}
-                  style={{ marginRight: 12, display: ['none', 'none', 'inline-block'] }}
-                />
-                
-                <Avatar
-                  size={40}
-                  src={otherUserInfo?.photoBase64}
-                  icon={!otherUserInfo?.photoBase64 && <UserOutlined />}
-                  style={{ 
-                    background: otherUserInfo?.photoBase64 ? 'transparent' : '#f0f0f0',
-                    color: '#000',
-                    marginRight: 12,
-                  }}
-                />
-                
-                <div>
-                  <Text strong style={{ fontSize: 16 }}>
-                    {otherUserInfo?.fullName || 'Пользователь'}
-                  </Text>
-                  <div style={{ fontSize: 12, color: '#666' }}>
-                    {otherUserInfo?.city && `📍 ${otherUserInfo.city}`}
-                    <span style={{ marginLeft: 8, color: '#52c41a' }}>● онлайн</span>
-                  </div>
-                </div>
-              </div>
-            </Header>
-            
-            {/* Область сообщений */}
-            <Content
-              style={{
-                padding: '24px',
-                overflowY: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                background: '#fafafa',
-              }}
-            >
-              {selectedChat.messages.length === 0 ? (
-                <div style={{ 
-                  flex: 1, 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  justifyContent: 'center', 
-                  alignItems: 'center',
-                  textAlign: 'center',
-                  color: '#999',
-                }}>
-                  <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
-                  <Title level={4} style={{ color: '#666' }}>
-                    Начните диалог
-                  </Title>
-                  <Text type="secondary">
-                    Напишите первое сообщение пользователю {otherUserInfo?.fullName}
-                  </Text>
-                </div>
-              ) : (
-                selectedChat.messages.map((msg) => {
-                  const isMyMessage = msg.senderId === currentUser.id;
-                  const messageTime = new Date(msg.timestamp);
-                  
-                  return (
-                    <div
-                      key={msg.id}
-                      style={messageStyles.container}
-                    >
-                      <div style={isMyMessage ? messageStyles.myMessage : messageStyles.otherMessage}>
-                        <Text>{msg.text}</Text>
-                        <div style={messageStyles.time}>
-                          {messageTime.toLocaleTimeString([], { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </Content>
-            
-            {/* Поле ввода сообщения */}
-            <div
-              style={{
-                padding: '16px 24px',
-                borderTop: '1px solid #e5e5e5',
-                background: '#fff',
-              }}
-            >
-              <Row gutter={12} align="middle">
-                <Col flex="auto">
-                  <TextArea
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Напишите сообщение..."
-                    autoSize={{ minRows: 1, maxRows: 4 }}
-                    style={{ borderRadius: 12 }}
-                  />
-                </Col>
-                <Col>
-                  <Button
-                    type="primary"
-                    icon={<SendOutlined />}
-                    onClick={handleSendMessage}
-                    disabled={!messageText.trim()}
-                    style={{ 
-                      borderRadius: 12,
-                      height: 40,
-                      width: 40,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  />
-                </Col>
-              </Row>
-            </div>
-          </>
+          <ChatWindow chat={selectedChat} messages={messages} currentUserId={currentUserId} onSendMessage={handleSendMessage} onBack={() => setSelectedChat(null)} />
         ) : (
-          /* Экран при выборе чата */
-          <div style={{
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            textAlign: 'center',
-            padding: 24,
-            color: '#999',
-          }}>
-            <div style={{ fontSize: 72, marginBottom: 24 }}>💬</div>
-            <Title level={3} style={{ color: '#666', marginBottom: 12 }}>
-              Выберите чат
-            </Title>
-            <Text type="secondary" style={{ maxWidth: 400 }}>
-              Выберите диалог из списка слева или начните новый, нажав на пользователя в рекомендациях
-            </Text>
+          <ChatList chatList={chatList} selectedChat={selectedChat} onSelectChat={setSelectedChat} />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <Row style={{ height: 'calc(100vh - 112px)', flexWrap: 'nowrap' }}>
+      <Col span={8} style={{ borderRight: '1px solid #e5e5e5', height: '100%'}}>
+        <ChatList chatList={chatList} selectedChat={selectedChat} onSelectChat={setSelectedChat} />
+      </Col>
+      <Col span={16} style={{ height: '100%'}}>
+        {selectedChat ? (
+          <ChatWindow chat={selectedChat} messages={messages} currentUserId={currentUserId} onSendMessage={handleSendMessage} />
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', textAlign: 'center' }}>
+            <div>
+              <div style={{ fontSize: 72, marginBottom: 24 }}>💬</div>
+              <Title level={3}>Выберите чат</Title>
+            </div>
           </div>
         )}
-      </Layout>
-    </Layout>
+      </Col>
+    </Row>
   );
 }

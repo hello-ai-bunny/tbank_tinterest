@@ -1,7 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import Shell from './layout/Shell';
 import Questionnaire from '../pages/onboarding/Questionnaire';
-import People from '../pages/recommendations/People';
+import People from '../pages/recomendations/People';
 import Chats from '../pages/chats/Chats';
 import Settings from '../pages/settings/Settings';
 import UserProfile from '../pages/profile/UserProfile';
