@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from .survey_schemas import InterestBase
 
 
 class UserLogin(BaseModel):
@@ -32,11 +33,14 @@ class ProfileUpdate(BaseModel):
     avatar_url: str | None = None
 
 
+
+
 class UserResponse(BaseModel):
     id: str
     email: str
     role: str
     profile: ProfileBase | None = None
+    interests: list[InterestBase] = []
 
     class Config:
         from_attributes = True

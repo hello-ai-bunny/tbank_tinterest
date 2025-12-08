@@ -18,5 +18,7 @@ class UserInterest(Base):
         Index("ix_user_interests_interest_user", "interest_id", "user_id"),
     )
 
-    user = relationship("User", back_populates="user_interests")
-    interest = relationship("Interest", back_populates="user_interests")
+    user = relationship("User", back_populates="user_interests", overlaps="interests,users")
+    interest = relationship(
+        "Interest", back_populates="user_interests", overlaps="interests,users"
+    )

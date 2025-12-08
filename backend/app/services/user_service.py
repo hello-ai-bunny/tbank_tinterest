@@ -28,16 +28,21 @@ def get_user_by_id(user_id: str) -> User | None:
         return db.get(User, user_id)
 
 
-def get_users() -> list[User]:
+def get_users(current_user_id: str) -> list[User]:
     with db_conn() as db:
-        return db.query(User).options(joinedload(User.profile)).all()
+        return (
+            db.query(User)
+            .options(joinedload(User.profile), joinedload(User.interests))
+            .filter(User.id != current_user_id)
+            .all()
+        )
 
 
 def get_user_with_profile(user_id: str) -> User | None:
     with db_conn() as db:
         return (
             db.query(User)
-            .options(joinedload(User.profile))
+            .options(joinedload(User.profile), joinedload(User.interests))
             .filter(User.id == user_id)
             .first()
         )

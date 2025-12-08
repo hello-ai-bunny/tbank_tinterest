@@ -32,3 +32,9 @@ class User(Base):
     user_interests = relationship(
         "UserInterest", back_populates="user", cascade="all, delete-orphan"
     )
+    interests = relationship(
+        "Interest",
+        secondary="user_interests",
+        back_populates="users",
+        overlaps="user_interests",
+    )
