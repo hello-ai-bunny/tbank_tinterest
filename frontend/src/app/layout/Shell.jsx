@@ -20,6 +20,12 @@ export default function Shell() {
     }
 
     const done = localStorage.getItem('onboardingDone') === '1';
+
+    if (done && loc.pathname === '/onboarding') {
+      nav('/', { replace: true });
+      return;
+    }
+
     if (!done && loc.pathname !== '/onboarding') {
       nav('/onboarding', { replace: true });
     }
@@ -57,7 +63,7 @@ export default function Shell() {
           mode="inline"
           selectedKeys={[selectedKey]}
           items={[
-            { key: 'recs', label: <Link to="/">{<TeamOutlined/>} Рекомендации</Link> },
+            { key: 'recs', label: <Link to="/">{<TeamOutlined />} Рекомендации</Link> },
             { key: 'chats', label: <Link to="/chats">{<MessageOutlined />} Чаты</Link> },
           ]}
         />

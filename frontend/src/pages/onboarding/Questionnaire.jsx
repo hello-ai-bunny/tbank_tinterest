@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Avatar, Button, Card, Col, Form, Input, Row, Space, Steps, Tag,
-  App as AntApp, Typography, Upload, Select, Spin,
-} from 'antd';
+import { Avatar, Button, Card, Col, Form, Input, Row, Space, Steps, Tag, App as AntApp, Typography, Upload, Select, Spin, } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import http from '../../shared/api/http';
@@ -81,7 +78,7 @@ export default function Questionnaire() {
       try {
         const [interestsRes, citiesRes, meRes, myInterestsRes] = await Promise.all([
           http.get(Endpoints.SURVEY.INTERESTS),
-          http.get('/cities'), 
+          http.get('/cities'),
           http.get(Endpoints.USERS.ME),
           http.get(Endpoints.SURVEY.MY_INTERESTS),
         ]);
@@ -90,7 +87,7 @@ export default function Questionnaire() {
 
         setAllInterests(Array.isArray(interestsRes.data) ? interestsRes.data : []);
         setCities(Array.isArray(citiesRes.data) ? citiesRes.data : []);
-        
+
         // Set profile data
         const profile = meRes.data?.profile ?? {};
         form.setFieldsValue({
@@ -149,21 +146,21 @@ export default function Questionnaire() {
         message.warning('Выберите хотя бы один интерес');
         return;
       }
-      
+
       setSaving(true);
 
       // Save profile and interests in parallel
       await Promise.all([
         http.patch(Endpoints.USERS.ME, {
-          first_name: values.firstName,
-          last_name: values.lastName,
-          email: values.email,
-          telegram: values.telegram,
+          first_name: values.firstName?.trim(),
+          last_name: values.lastName?.trim() || null,
+          email: values.email?.trim() || null,
+          telegram: values.telegram?.trim() || null,
           city: values.city,
-          about: values.about || null,
+          about: values.about?.trim() || null,
           avatar_url: avatarUrl || null,
         }),
-        http.put(Endpoints.SURVEY.MY_INTERESTS, ids)
+        http.put(Endpoints.SURVEY.MY_INTERESTS, Array.from(selectedIds)),
       ]);
 
       localStorage.setItem('onboardingDone', '1');
@@ -223,7 +220,7 @@ export default function Questionnaire() {
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item label="Email" name="email">
+                  <Form.Item label="Email" name="email" rules={[{ type: 'email', message: 'Введите корректный email' }]}>
                     <Input placeholder="elena@example.com" />
                   </Form.Item>
                 </Col>
@@ -260,6 +257,7 @@ export default function Questionnaire() {
                           const active = selectedIds.has(it.id);
                           return (
                             <Tag.CheckableTag
+                              style={{ borderRadius: 16 }}
                               key={it.id}
                               checked={active}
                               onChange={() => toggleInterest(it.id)}
