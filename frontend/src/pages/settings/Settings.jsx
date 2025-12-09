@@ -5,8 +5,6 @@ import axios from 'axios';
 import http from '../../shared/api/http';
 import { Endpoints } from '../../shared/api/endpoints';
 
-// TO DO: дописать поля email и телеграма
-
 const { Title, Text } = Typography;
 
 const CITIES = [
@@ -280,7 +278,7 @@ export default function Settings() {
             key: 'profile',
             label: 'Профиль',
             children: (
-              <Card bordered={false} style={{ borderRadius: 16 }}>
+              <Card variant="borderless" style={{ borderRadius: 16 }}>
                 <Row gutter={[24, 16]} align="middle">
                   <Col>
                     <Avatar
