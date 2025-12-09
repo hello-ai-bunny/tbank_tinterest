@@ -11,4 +11,9 @@ export const Endpoints = {
         INTERESTS: '/survey/interests',
         MY_INTERESTS: '/survey/me/interests',
     },
+    CHATS: {
+        LIST: '/chats',
+        BASE: '/chats',
+        WS: '/ws/chats',
+    },
 };
