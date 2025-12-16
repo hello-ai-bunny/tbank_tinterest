@@ -141,7 +141,7 @@ export default function People() {
           border-radius: 999px;
           padding: 6px 14px;
           font-size: 13px;
-          font-weight: 700;
+          font-weight: 500;
           line-height: 1;
           min-width: 60px;
           text-align: center;
@@ -212,7 +212,7 @@ export default function People() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Искать людей"
           prefix={<SearchOutlined />}
-          style={{ width: 260, borderRadius: 10 }}
+          style={{ width: 260, borderRadius: 20 }}
         />
       </div>
 
@@ -227,7 +227,7 @@ export default function People() {
             <Col key={user.id} xs={24} sm={12} md={8} lg={6}>
               <Card
                 className="tCard"
-                bordered={false}
+                variant="borderless"
                 onClick={(e) => openProfile(user.id, e)}
               >
                 <Avatar

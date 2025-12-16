@@ -69,7 +69,6 @@ const ChatList = ({ chatList, selectedChat, onSelectChat, searchQuery, onSearchC
               backgroundColor: selectedChat?.id === chat.id ? '#f0f0f0' : 'transparent',
               cursor: 'pointer'
             }}
-            bodyStyle={{ padding: 0 }}
             onClick={() => onSelectChat(chat)}
           >
             <div style={{ display: 'flex', alignItems: 'center' }}>
