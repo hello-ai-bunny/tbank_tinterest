@@ -4,6 +4,7 @@ from .interest import Interest
 from .user_interest import UserInterest
 from .chat import Chat
 from .message import Message
+from .user_interaction import UserInteraction
 
 __all__ = [
     "User",
@@ -12,4 +13,5 @@ __all__ = [
     "UserInterest",
     "Chat",
     "Message",
+    "UserInteraction",
 ]
