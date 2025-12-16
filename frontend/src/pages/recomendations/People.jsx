@@ -7,105 +7,48 @@ import { Endpoints } from '../../shared/api/endpoints';
 
 const { Title, Text } = Typography;
 
-const HIDDEN_USERS_KEY = 'hiddenUsers';
-
 export default function People() {
   const nav = useNavigate();
   const { message } = AntApp.useApp();
 
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
-  const [currentUserInterests, setCurrentUserInterests] = useState([]);
   const [query, setQuery] = useState('');
-  const [hiddenIds, setHiddenIds] = useState(() => {
-    // Загружаем скрытых пользователей из localStorage
-    try {
-      const hidden = JSON.parse(localStorage.getItem(HIDDEN_USERS_KEY) || '[]');
-      return new Set(hidden);
-    } catch {
-      return new Set();
-    }
-  });
 
-  // Загрузка текущего пользователя и его интересов
+  // Загрузка рекомендаций
   useEffect(() => {
     let alive = true;
-    async function loadCurrentUser() {
-      try {
-        const { data: userData } = await http.get(Endpoints.USERS.ME);
-        const { data: interestsData } = await http.get(Endpoints.SURVEY.MY_INTERESTS);
-        if (alive) {
-          setCurrentUserInterests(interestsData || []);
-        }
-      } catch (e) {
-        console.error('Ошибка загрузки текущего пользователя:', e);
-      }
-    }
-    loadCurrentUser();
-    return () => { alive = false; };
-  }, []);
-
-  // Загрузка списка пользователей
-  useEffect(() => {
-    let alive = true;
-    async function loadUsers() {
+    async function loadRecommendations() {
       setLoading(true);
       try {
-        const { data } = await http.get(Endpoints.USERS.LIST);
+        const { data } = await http.get(Endpoints.RECOMMENDATIONS.LIST);
         if (alive) {
           setUsers(Array.isArray(data) ? data : []);
         }
       } catch (e) {
-        message.error('Не удалось загрузить список пользователей');
+        message.error('Не удалось загрузить рекомендации');
+        console.error(e);
       } finally {
         if (alive) setLoading(false);
       }
     }
-    loadUsers();
+    loadRecommendations();
     return () => { alive = false; };
   }, [message]);
 
-  // Функция для расчета процента совместимости
-  const calculateCompatibility = (userInterests) => {
-    if (!currentUserInterests.length || !userInterests.length) return 0;
-    
-    const myInterestIds = new Set(currentUserInterests.map(i => i.id));
-    const userInterestIds = new Set(userInterests.map(i => i.id));
-    
-    // Находим пересечение интересов
-    let commonCount = 0;
-    userInterestIds.forEach(id => {
-      if (myInterestIds.has(id)) commonCount++;
-    });
-    
-    // Рассчитываем процент совпадения (формула Жаккара)
-    const unionSize = new Set([...myInterestIds, ...userInterestIds]).size;
-    return unionSize > 0 ? Math.round((commonCount / unionSize) * 100) : 0;
-  };
-
-  // Фильтрация и сортировка пользователей
-  const filteredAndSortedUsers = useMemo(() => {
+  // Фильтрация (поиск)
+  const filteredUsers = useMemo(() => {
     const q = query.trim().toLowerCase();
     
-    // Сначала фильтруем по поисковому запросу и скрытым пользователям
-    const filtered = users.filter((user) => {
-      if (hiddenIds.has(user.id)) return false;
-      
+    if (!q) return users;
+
+    return users.filter((user) => {
       const profile = user.profile || {};
       const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim().toLowerCase();
       const email = user.email.toLowerCase();
       return fullName.includes(q) || email.includes(q);
     });
-
-    // Затем добавляем процент совместимости и сортируем
-    const withCompatibility = filtered.map(user => ({
-      ...user,
-      compatibility: calculateCompatibility(user.interests || [])
-    }));
-
-    // Сортируем по убыванию процента совместимости
-    return withCompatibility.sort((a, b) => b.compatibility - a.compatibility);
-  }, [users, query, currentUserInterests, hiddenIds]);
+  }, [users, query]);
 
   const startChat = (userId, e) => {
     e.stopPropagation();
@@ -117,18 +60,21 @@ export default function People() {
     nav(`/profile/${userId}`);
   };
 
-  const hideUser = (userId, e) => {
+  const hideUser = async (userId, e) => {
     e.stopPropagation();
     
-    // Добавляем пользователя в скрытые
-    const newHiddenIds = new Set(hiddenIds);
-    newHiddenIds.add(userId);
-    setHiddenIds(newHiddenIds);
-    
-    // Сохраняем в localStorage
-    localStorage.setItem(HIDDEN_USERS_KEY, JSON.stringify(Array.from(newHiddenIds)));
-    
-    message.success('Пользователь скрыт');
+    try {
+      // Оптимистичное обновление интерфейса: сразу убираем из списка
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      
+      // Отправляем запрос на сервер
+      await http.post(Endpoints.RECOMMENDATIONS.HIDE(userId));
+      message.success('Пользователь скрыт');
+    } catch (e) {
+      message.error('Ошибка при скрытии');
+      // Если ошибка - можно вернуть пользователя обратно, но это редкость
+      console.error(e);
+    }
   };
 
   if (loading) {
@@ -271,7 +217,7 @@ export default function People() {
       </div>
 
       <Row gutter={[16, 16]}>
-        {filteredAndSortedUsers.map((user) => {
+        {filteredUsers.map((user) => {
           const profile = user.profile || {};
           const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.email;
           const compatibility = user.compatibility || 0;
@@ -349,7 +295,7 @@ export default function People() {
         })}
       </Row>
 
-      {!filteredAndSortedUsers.length && !loading && (
+      {!filteredUsers.length && !loading && (
         <div style={{ 
           padding: 48, 
           textAlign: 'center',
@@ -359,13 +305,10 @@ export default function People() {
         }}>
           <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>👤</div>
           <Title level={4} style={{ marginBottom: 8 }}>
-            {hiddenIds.size > 0 ? 'Все пользователи скрыты' : 'Пользователи не найдены'}
+            Пользователи не найдены
           </Title>
           <Text type="secondary">
-            {hiddenIds.size > 0 
-              ? 'Очистите список скрытых пользователей или измените поисковый запрос'
-              : 'Попробуйте изменить поисковый запрос'
-            }
+            Попробуйте изменить поисковый запрос или зайдите позже
           </Text>
         </div>
       )}

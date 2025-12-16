@@ -161,11 +161,10 @@ export default function Settings() {
         if (!alive) return;
 
         const profile = meRes?.data?.profile ?? {};
-        const { firstName, lastName } = splitFullName(profile?.full_name);
-
+        
         form.setFieldsValue({
-          firstName,
-          lastName,
+          firstName: profile?.first_name || '',
+          lastName: profile?.last_name || '',
           city: profile?.city || undefined,
           about: profile?.about || '',
         });
@@ -224,7 +223,8 @@ export default function Settings() {
       setSavingProfile(true);
 
       await http.patch(Endpoints.USERS.ME, {
-        full_name: fullName,
+        first_name: values.firstName,
+        last_name: values.lastName,
         city: values.city,
         about: values.about || null,
         avatar_url: avatarUrl || null,
