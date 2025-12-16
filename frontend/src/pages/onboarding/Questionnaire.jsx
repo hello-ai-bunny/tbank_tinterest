@@ -81,7 +81,7 @@ export default function Questionnaire() {
       try {
         const [interestsRes, citiesRes, meRes, myInterestsRes] = await Promise.all([
           http.get(Endpoints.SURVEY.INTERESTS),
-          http.get('/cities'), 
+          http.get('/cities'),
           http.get(Endpoints.USERS.ME),
           http.get(Endpoints.SURVEY.MY_INTERESTS),
         ]);
@@ -90,7 +90,7 @@ export default function Questionnaire() {
 
         setAllInterests(Array.isArray(interestsRes.data) ? interestsRes.data : []);
         setCities(Array.isArray(citiesRes.data) ? citiesRes.data : []);
-        
+
         // Set profile data
         const profile = meRes.data?.profile ?? {};
         form.setFieldsValue({
@@ -149,21 +149,21 @@ export default function Questionnaire() {
         message.warning('Выберите хотя бы один интерес');
         return;
       }
-      
+
       setSaving(true);
 
       // Save profile and interests in parallel
       await Promise.all([
         http.patch(Endpoints.USERS.ME, {
-          first_name: values.firstName,
-          last_name: values.lastName,
-          email: values.email,
-          telegram: values.telegram,
+          first_name: values.firstName?.trim(),
+          last_name: values.lastName?.trim() || null,
+          email: values.email?.trim() || null,
+          telegram: values.telegram?.trim() || null,
           city: values.city,
-          about: values.about || null,
+          about: values.about?.trim() || null,
           avatar_url: avatarUrl || null,
         }),
-        http.put(Endpoints.SURVEY.MY_INTERESTS, ids)
+        http.put(Endpoints.SURVEY.MY_INTERESTS, Array.from(selectedIds)),
       ]);
 
       localStorage.setItem('onboardingDone', '1');
@@ -260,6 +260,7 @@ export default function Questionnaire() {
                           const active = selectedIds.has(it.id);
                           return (
                             <Tag.CheckableTag
+                              style={{ borderRadius: 16 }}
                               key={it.id}
                               checked={active}
                               onChange={() => toggleInterest(it.id)}
@@ -275,7 +276,7 @@ export default function Questionnaire() {
               </Row>
               <div style={{ height: 18 }} />
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <Button type="primary" size="large" style={{ minWidth: 220 }} loading={saving} onClick={save}>
+                <Button type="primary" size="large" style={{ minWidth: 220, borderRadius: 20 }} loading={saving} onClick={save}>
                   Сохранить
                 </Button>
               </div>

@@ -8,8 +8,6 @@ import axios from 'axios';
 import http from '../../shared/api/http';
 import { Endpoints } from '../../shared/api/endpoints';
 
-// TO DO: дописать поля email и телеграма
-
 const { Title, Text } = Typography;
 
 const CITIES = [
@@ -161,10 +159,12 @@ export default function Settings() {
         if (!alive) return;
 
         const profile = meRes?.data?.profile ?? {};
-        
+
         form.setFieldsValue({
           firstName: profile?.first_name || '',
           lastName: profile?.last_name || '',
+          email: profile?.email || '',
+          telegram: profile?.telegram || '',
           city: profile?.city || undefined,
           about: profile?.about || '',
         });
@@ -223,10 +223,12 @@ export default function Settings() {
       setSavingProfile(true);
 
       await http.patch(Endpoints.USERS.ME, {
-        first_name: values.firstName,
-        last_name: values.lastName,
+        first_name: values.firstName?.trim(),
+        last_name: values.lastName?.trim() || null,
+        email: values.email?.trim() || null,
+        telegram: values.telegram?.trim() || null,
         city: values.city,
-        about: values.about || null,
+        about: values.about?.trim() || null,
         avatar_url: avatarUrl || null,
         visibility: 'all',
       });
@@ -300,9 +302,7 @@ export default function Settings() {
 
                     <div style={{ marginTop: 6 }}>
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        {import.meta.env.VITE_IMGBB_KEY
-                          ? 'Фото сохраняется как ссылка (avatar_url)'
-                          : 'Фото сохраняется как data URL (avatar_url)'}
+                        {import.meta.env.VITE_IMGBB_KEY}
                       </Text>
                     </div>
                   </Col>
@@ -325,6 +325,22 @@ export default function Settings() {
                     <Col xs={24} md={12}>
                       <Form.Item label="Фамилия" name="lastName">
                         <Input placeholder="Иванова" />
+                      </Form.Item>
+                    </Col>
+
+                    <Col xs={24} md={12}>
+                      <Form.Item
+                        label="Email"
+                        name="email"
+                        rules={[{ type: 'email', message: 'Введите корректный email' }]}
+                      >
+                        <Input placeholder="elena@example.com" />
+                      </Form.Item>
+                    </Col>
+
+                    <Col xs={24} md={12}>
+                      <Form.Item label="Телеграм" name="telegram">
+                        <Input placeholder="@elena_ivanova" />
                       </Form.Item>
                     </Col>
 
