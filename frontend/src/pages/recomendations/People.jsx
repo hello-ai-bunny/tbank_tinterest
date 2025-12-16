@@ -7,45 +7,14 @@ import { Endpoints } from '../../shared/api/endpoints';
 
 const { Title, Text } = Typography;
 
-const HIDDEN_USERS_KEY = 'hiddenUsers';
-
 export default function People() {
   const nav = useNavigate();
   const { message } = AntApp.useApp();
 
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
-  const [currentUserInterests, setCurrentUserInterests] = useState([]);
   const [query, setQuery] = useState('');
-  const [hiddenIds, setHiddenIds] = useState(() => {
-    // Загружаем скрытых пользователей из localStorage
-    try {
-      const hidden = JSON.parse(localStorage.getItem(HIDDEN_USERS_KEY) || '[]');
-      return new Set(hidden);
-    } catch {
-      return new Set();
-    }
-  });
 
-  // Загрузка текущего пользователя и его интересов
-  useEffect(() => {
-    let alive = true;
-    async function loadCurrentUser() {
-      try {
-        const { data: userData } = await http.get(Endpoints.USERS.ME);
-        const { data: interestsData } = await http.get(Endpoints.SURVEY.MY_INTERESTS);
-        if (alive) {
-          setCurrentUserInterests(interestsData || []);
-        }
-      } catch (e) {
-        console.error('Ошибка загрузки текущего пользователя:', e);
-      }
-    }
-    loadCurrentUser();
-    return () => { alive = false; };
-  }, []);
-
-  // Загрузка списка пользователей
   useEffect(() => {
     let alive = true;
     async function loadUsers() {
@@ -65,47 +34,16 @@ export default function People() {
     return () => { alive = false; };
   }, [message]);
 
-  // Функция для расчета процента совместимости
-  const calculateCompatibility = (userInterests) => {
-    if (!currentUserInterests.length || !userInterests.length) return 0;
-    
-    const myInterestIds = new Set(currentUserInterests.map(i => i.id));
-    const userInterestIds = new Set(userInterests.map(i => i.id));
-    
-    // Находим пересечение интересов
-    let commonCount = 0;
-    userInterestIds.forEach(id => {
-      if (myInterestIds.has(id)) commonCount++;
-    });
-    
-    // Рассчитываем процент совпадения (формула Жаккара)
-    const unionSize = new Set([...myInterestIds, ...userInterestIds]).size;
-    return unionSize > 0 ? Math.round((commonCount / unionSize) * 100) : 0;
-  };
-
-  // Фильтрация и сортировка пользователей
-  const filteredAndSortedUsers = useMemo(() => {
+  const filteredUsers = useMemo(() => {
     const q = query.trim().toLowerCase();
-    
-    // Сначала фильтруем по поисковому запросу и скрытым пользователям
-    const filtered = users.filter((user) => {
-      if (hiddenIds.has(user.id)) return false;
-      
+    if (!q) return users;
+    return users.filter((user) => {
       const profile = user.profile || {};
       const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim().toLowerCase();
       const email = user.email.toLowerCase();
       return fullName.includes(q) || email.includes(q);
     });
-
-    // Затем добавляем процент совместимости и сортируем
-    const withCompatibility = filtered.map(user => ({
-      ...user,
-      compatibility: calculateCompatibility(user.interests || [])
-    }));
-
-    // Сортируем по убыванию процента совместимости
-    return withCompatibility.sort((a, b) => b.compatibility - a.compatibility);
-  }, [users, query, currentUserInterests, hiddenIds]);
+  }, [users, query]);
 
   const startChat = (userId, e) => {
     e.stopPropagation();
@@ -119,15 +57,6 @@ export default function People() {
 
   const hideUser = (userId, e) => {
     e.stopPropagation();
-    
-    // Добавляем пользователя в скрытые
-    const newHiddenIds = new Set(hiddenIds);
-    newHiddenIds.add(userId);
-    setHiddenIds(newHiddenIds);
-    
-    // Сохраняем в localStorage
-    localStorage.setItem(HIDDEN_USERS_KEY, JSON.stringify(Array.from(newHiddenIds)));
-    
     message.success('Пользователь скрыт');
   };
 
@@ -155,6 +84,8 @@ export default function People() {
           cursor: pointer;
           height: 100%;
           transition: transform 0.2s, box-shadow 0.2s;
+          display: flex;
+          flex-direction: column;
         }
 
         .tCard:hover {
@@ -168,6 +99,17 @@ export default function People() {
           flex-direction: column;
           align-items: center;
           gap: 12px;
+          flex: 1;
+          width: 100%;
+        }
+
+        .tAvatarSection {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          flex-shrink: 0;
         }
 
         .tName { 
@@ -176,6 +118,13 @@ export default function People() {
           line-height: 1.2;
           font-size: 16px;
           margin: 0;
+          width: 100%;
+          height: 38px; 
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         
         .tCity { 
@@ -184,21 +133,21 @@ export default function People() {
           text-align: center;
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 4px;
           margin: 0;
+          height: 20px; 
+          width: 100%;
+          flex-shrink: 0;
         }
 
-        .tMatch {
-          border: 0;
-          background: var(--accent) !important;
-          color: #000 !important;
-          border-radius: 999px;
-          padding: 6px 14px;
-          font-size: 13px;
-          font-weight: 700;
-          line-height: 1;
-          min-width: 60px;
-          text-align: center;
+        .tChipsContainer {
+          width: 100%;
+          flex: 1;
+          min-height: 60px;
+          max-height: 60px;
+          overflow: hidden;
+          position: relative;
         }
 
         .tChips {
@@ -206,7 +155,9 @@ export default function People() {
           gap: 6px;
           flex-wrap: wrap;
           justify-content: center;
-          min-height: 26px;
+          width: 100%;
+          max-height: 55px; 
+          overflow: hidden;
         }
 
         .tChip {
@@ -217,15 +168,18 @@ export default function People() {
           border: 1px solid #ededed;
           color: rgba(0,0,0,.75);
           user-select: none;
+          flex-shrink: 0;
+          line-height: 1.3;
         }
 
         .tActions {
           width: 100%;
-          margin-top: 4px;
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 8px;
+          flex-shrink: 0;
+          margin-top: auto;
         }
 
         .tWriteBtn {
@@ -244,21 +198,40 @@ export default function People() {
           height: auto !important;
           color: rgba(0,0,0,.5) !important;
           font-size: 12px !important;
+          width: 100%;
+          text-align: center;
         }
         
         .tHideBtn:hover { 
           color: rgba(0,0,0,.75) !important; 
           background: transparent !important;
         }
+
+        .tEmptyCity {
+          opacity: 0.3;
+          font-size: 13px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .tEmptyInterests {
+          opacity: 0.3;
+          font-size: 11px;
+          padding: 3px 10px;
+          border-radius: 999px;
+          background: #f5f5f5;
+          border: 1px dashed #e0e0e0;
+          color: rgba(0,0,0,.75);
+          line-height: 1.3;
+        }
       `}</style>
 
       <div className="tRecsTop">
-        <div>
-          <Title level={3} style={{ margin: 0 }}>
-            Рекомендации
-          </Title>
-          <Text type="secondary">Сортировка по совместимости интересов</Text>
-        </div>
+        <Title level={3} style={{ margin: 0 }}>
+          Пользователи
+        </Title>
 
         <Input
           allowClear
@@ -271,55 +244,61 @@ export default function People() {
       </div>
 
       <Row gutter={[16, 16]}>
-        {filteredAndSortedUsers.map((user) => {
+        {filteredUsers.map((user) => {
           const profile = user.profile || {};
           const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.email;
-          const compatibility = user.compatibility || 0;
           const interests = user.interests || [];
+          const displayCity = profile.city || null;
 
           return (
             <Col key={user.id} xs={24} sm={12} md={8} lg={6}>
               <Card
                 className="tCard"
-                bordered={false}
                 onClick={(e) => openProfile(user.id, e)}
               >
-                <Avatar
-                  size={72}
-                  src={profile.avatar_url}
-                  icon={<UserOutlined />}
-                  style={{ 
-                    background: profile.avatar_url ? 'transparent' : '#f0f0f0', 
-                    color: '#000',
-                    border: '2px solid #f0f0f0'
-                  }}
-                >
-                  {fullName?.[0]?.toUpperCase()}
-                </Avatar>
+                <div className="tAvatarSection">
+                  <Avatar
+                    size={72}
+                    src={profile.avatar_url}
+                    icon={<UserOutlined />}
+                    style={{ 
+                      background: profile.avatar_url ? 'transparent' : '#f0f0f0', 
+                      color: '#000',
+                      border: '2px solid #f0f0f0'
+                    }}
+                  >
+                    {fullName?.[0]?.toUpperCase()}
+                  </Avatar>
 
-                <div className="tName">{fullName}</div>
-
-                {profile.city && (
-                  <div className="tCity">
-                    <EnvironmentOutlined /> {profile.city}
+                  <div className="tName" title={fullName}>
+                    {fullName}
                   </div>
-                )}
 
-                <div className="tMatch">
-                  Совпадение {compatibility}%
+                  <div className="tCity">
+                    {displayCity ? (
+                      <>
+                        <EnvironmentOutlined /> {displayCity}
+                      </>
+                    ) : (
+                      <span className="tEmptyCity">Город не указан</span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="tChips">
-                  {interests.slice(0, 4).map((interest) => (
-                    <span key={interest.id} className="tChip">
-                      {interest.name}
-                    </span>
-                  ))}
-                  {interests.length > 4 && (
-                    <span className="tChip">
-                      +{interests.length - 4}
-                    </span>
-                  )}
+                <div className="tChipsContainer">
+                  <div className="tChips">
+                    {interests.length > 0 ? (
+                      interests.slice(0, 6).map((interest) => (
+                        <span key={interest.id} className="tChip">
+                          {interest.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="tEmptyInterests">
+                        Нет интересов
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="tActions">
@@ -349,7 +328,7 @@ export default function People() {
         })}
       </Row>
 
-      {!filteredAndSortedUsers.length && !loading && (
+      {!filteredUsers.length && !loading && (
         <div style={{ 
           padding: 48, 
           textAlign: 'center',
@@ -359,13 +338,10 @@ export default function People() {
         }}>
           <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.5 }}>👤</div>
           <Title level={4} style={{ marginBottom: 8 }}>
-            {hiddenIds.size > 0 ? 'Все пользователи скрыты' : 'Пользователи не найдены'}
+            Пользователи не найдены
           </Title>
           <Text type="secondary">
-            {hiddenIds.size > 0 
-              ? 'Очистите список скрытых пользователей или измените поисковый запрос'
-              : 'Попробуйте изменить поисковый запрос'
-            }
+            Попробуйте изменить поисковый запрос
           </Text>
         </div>
       )}

@@ -21,23 +21,7 @@ export default function UserProfile() {
 
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [currentUserInterests, setCurrentUserInterests] = useState([]);
-  const [compatibility, setCompatibility] = useState(0);
 
-  // Загрузка текущего пользователя и его интересов
-  useEffect(() => {
-    async function loadCurrentUserInterests() {
-      try {
-        const { data } = await http.get(Endpoints.SURVEY.MY_INTERESTS);
-        setCurrentUserInterests(data || []);
-      } catch (error) {
-        console.error('Ошибка загрузки интересов текущего пользователя:', error);
-      }
-    }
-    loadCurrentUserInterests();
-  }, []);
-
-  // Загрузка данных пользователя
   useEffect(() => {
     let alive = true;
     async function loadUser() {
@@ -51,24 +35,6 @@ export default function UserProfile() {
           
           if (foundUser) {
             setUser(foundUser);
-            
-            // Рассчитываем совместимость
-            const userInterests = foundUser.interests || [];
-            if (currentUserInterests.length && userInterests.length) {
-              const myInterestIds = new Set(currentUserInterests.map(i => i.id));
-              const userInterestIds = new Set(userInterests.map(i => i.id));
-              
-              let commonCount = 0;
-              userInterestIds.forEach(id => {
-                if (myInterestIds.has(id)) commonCount++;
-              });
-              
-              const unionSize = new Set([...myInterestIds, ...userInterestIds]).size;
-              const calculatedCompatibility = unionSize > 0 
-                ? Math.round((commonCount / unionSize) * 100) 
-                : 0;
-              setCompatibility(calculatedCompatibility);
-            }
           }
         }
       } catch (error) {
@@ -80,7 +46,7 @@ export default function UserProfile() {
     
     loadUser();
     return () => { alive = false; };
-  }, [id, message, currentUserInterests]);
+  }, [id, message]);
 
   const goBack = () => {
     if (location.state?.from) nav(-1);
@@ -177,44 +143,26 @@ export default function UserProfile() {
           </Col>
           
           <Col>
-            <Space direction="vertical" size={12} align="end">
-              <Tag
-                style={{
-                  background: 'var(--accent)',
-                  border: 'none',
-                  color: '#000',
-                  borderRadius: 999,
-                  padding: '6px 20px',
-                  fontWeight: 700,
-                  fontSize: 14,
-                  textAlign: 'center'
-                }}
-              >
-                Совпадение {compatibility}%
-              </Tag>
-              
-              <Button 
-                type="primary" 
-                icon={<MessageOutlined />} 
-                onClick={goChat}
-                style={{ 
-                  minWidth: 140,
-                  background: 'var(--accent)',
-                  borderColor: 'var(--accent)',
-                  color: '#000',
-                  fontWeight: 600,
-                  borderRadius: 999
-                }}
-              >
-                Написать
-              </Button>
-            </Space>
+            <Button 
+              type="primary" 
+              icon={<MessageOutlined />} 
+              onClick={goChat}
+              style={{ 
+                minWidth: 140,
+                background: 'var(--accent)',
+                borderColor: 'var(--accent)',
+                color: '#000',
+                fontWeight: 600,
+                borderRadius: 999
+              }}
+            >
+              Написать
+            </Button>
           </Col>
         </Row>
 
         <Divider />
 
-        {/* Обо мне */}
         <div style={{ marginBottom: 24 }}>
           <Title level={4} style={{ marginBottom: 12 }}>Обо мне</Title>
           {about ? (
@@ -241,7 +189,6 @@ export default function UserProfile() {
           )}
         </div>
 
-        {/* Интересы */}
         {interests.length > 0 && (
           <>
             <Divider />
