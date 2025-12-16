@@ -11,7 +11,7 @@ import { useMediaQuery } from 'react-responsive';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
-const { Header, Content, Sider } = Layout;
+const { Header, Content } = Layout;
 
 function getAuthToken() {
   try {
@@ -24,16 +24,16 @@ function getAuthToken() {
 }
 
 function getAuthUserId() {
-    try {
-        const raw = localStorage.getItem('authUser');
-        if (!raw) return null;
-        const token = JSON.parse(raw)?.access_token;
-        if (!token) return null;
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        return payload.sub;
-    } catch {
-        return null;
-    }
+  try {
+    const raw = localStorage.getItem('authUser');
+    if (!raw) return null;
+    const token = JSON.parse(raw)?.access_token;
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.sub;
+  } catch {
+    return null;
+  }
 }
 
 const ChatList = ({ chatList, selectedChat, onSelectChat, searchQuery, onSearchChange }) => {
@@ -161,7 +161,6 @@ const ChatWindow = ({ chat, messages, currentUserId, onSendMessage, onBack }) =>
           <Avatar size={40} src={chat.participant.avatar_url} icon={<UserOutlined />} />
           <div style={{ marginLeft: 12 }}>
             <Text strong>{`${chat.participant.first_name || ''} ${chat.participant.last_name || ''}`.trim()}</Text>
-          
           </div>
         </div>
       </Header>
@@ -214,24 +213,24 @@ const ChatWindow = ({ chat, messages, currentUserId, onSendMessage, onBack }) =>
       
       <div style={{ padding: '16px', borderTop: '1px solid #e5e5e5' }}>
         <Space.Compact style={{ width: '100%' }}>
-            <TextArea
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Напишите сообщение..."
-              autoSize={{ minRows: 1, maxRows: 4 }}
-              onKeyPress={(e) => { 
-                if (e.key === 'Enter' && !e.shiftKey) { 
-                  e.preventDefault(); 
-                  handleSend(); 
-                } 
-              }}
-            />
-            <Button 
-              type="primary" 
-              icon={<SendOutlined />} 
-              onClick={handleSend} 
-              disabled={!messageText.trim()} 
-            />
+          <TextArea
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            placeholder="Напишите сообщение..."
+            autoSize={{ minRows: 1, maxRows: 4 }}
+            onKeyPress={(e) => { 
+              if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                handleSend(); 
+              } 
+            }}
+          />
+          <Button 
+            type="primary" 
+            icon={<SendOutlined />} 
+            onClick={handleSend} 
+            disabled={!messageText.trim()} 
+          />
         </Space.Compact>
       </div>
     </Layout>
@@ -250,69 +249,53 @@ export default function Chats() {
   const [selectedChat, setSelectedChat] = useState(null);
   
   const currentUserId = useMemo(() => getAuthUserId(), []);
-  const toUserId = location.state?.toUserId;
+  const chatIdFromState = location.state?.chatId || null;
   const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
 
-  // Load chat list
+  // Загрузка списка чатов + авто-выбор нужного по chatIdFromState
   useEffect(() => {
     let alive = true;
+
     async function loadChats() {
       setLoading(true);
       try {
-        const { data } = await http.get('/chats');
-        if (alive) {
-          setChatList(Array.isArray(data) ? data : []);
+        const { data } = await http.get(Endpoints.CHATS.LIST);
+        if (!alive) return;
+
+        const list = Array.isArray(data) ? data : [];
+        setChatList(list);
+
+        if (chatIdFromState) {
+          const target = list.find(c => String(c.id) === String(chatIdFromState));
+          if (target) {
+            setSelectedChat(target);
+          }
         }
-      } catch {
+      } catch (err) {
+        console.error(err);
         message.error('Не удалось загрузить список чатов');
       } finally {
         if (alive) setLoading(false);
       }
     }
+
     loadChats();
     return () => { alive = false; };
-  }, [message]);
+  }, [message, chatIdFromState]);
 
-  // Handle opening a chat from recommendation or list
-  useEffect(() => {
-    if (!toUserId) return;
-    
-    async function openChatFromNav() {
-      try {
-        const { data } = await http.get(`/chats/${toUserId}`);
-        setSelectedChat(data);
-      } catch {
-        message.error('Не удалось открыть чат');
-      }
-    }
-    
-    if (toUserId && chatList.length > 0) {
-      // Ищем чат в списке
-      const existingChat = chatList.find(chat => 
-        chat.participant.id === toUserId
-      );
-      
-      if (existingChat) {
-        setSelectedChat(existingChat);
-      } else {
-        // Если чата нет в списке, создаем его
-        openChatFromNav();
-      }
-    }
-  }, [toUserId, chatList, message]);
-  
-  // Load messages for selected chat
+  // Загрузка сообщений выбранного чата
   useEffect(() => {
     if (!selectedChat) return;
     
     let alive = true;
     async function loadMessages() {
       try {
-        const { data } = await http.get(`/chats/${selectedChat.id}/messages`);
+        const { data } = await http.get(Endpoints.CHATS.MESSAGES(selectedChat.id));
         if (alive) {
           setMessages(Array.isArray(data) ? data : []);
         }
-      } catch {
+      } catch (err) {
+        console.error(err);
         message.error('Не удалось загрузить сообщения');
       }
     }
@@ -320,7 +303,7 @@ export default function Chats() {
     return () => { alive = false; };
   }, [selectedChat, message]);
 
-  // WebSocket connection
+  // WebSocket для выбранного чата
   useEffect(() => {
     if (!selectedChat) return;
     const token = getAuthToken();
@@ -329,7 +312,7 @@ export default function Chats() {
       return;
     }
 
-    const wsUrl = `ws://localhost:8000/ws/chats/${selectedChat.id}?token=${token}`;
+    const wsUrl = `ws://localhost:8000${Endpoints.CHATS.WS}/${selectedChat.id}?token=${token}`;
     ws.current = new WebSocket(wsUrl);
 
     ws.current.onopen = () => console.log(`WebSocket connected to chat ${selectedChat.id}`);
@@ -350,8 +333,9 @@ export default function Chats() {
   const handleSendMessage = async (text) => {
     if (!text || !selectedChat) return;
     try {
-      await http.post(`/chats/${selectedChat.id}/messages`, { text });
-    } catch {
+      await http.post(Endpoints.CHATS.MESSAGES(selectedChat.id), { text });
+    } catch (err) {
+      console.error(err);
       message.error('Не удалось отправить сообщение');
     }
   };
@@ -368,7 +352,11 @@ export default function Chats() {
   }, [chatList, searchQuery]);
   
   if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Spin size="large" /></div>;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <Spin size="large" />
+      </div>
+    );
   }
 
   if (isMobile) {

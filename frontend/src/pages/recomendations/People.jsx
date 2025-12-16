@@ -39,7 +39,7 @@ export default function People() {
   // Фильтрация (поиск)
   const filteredUsers = useMemo(() => {
     const q = query.trim().toLowerCase();
-    
+
     if (!q) return users;
 
     return users.filter((user) => {
@@ -50,29 +50,34 @@ export default function People() {
     });
   }, [users, query]);
 
-  const startChat = (userId, e) => {
+  const startChat = async (userId, e) => {
     e.stopPropagation();
-    nav('/chats', { state: { toUserId: userId } });
+
+    try {
+      const { data } = await http.get(Endpoints.CHATS.WITH_USER(userId));
+
+      nav('/chats', { state: { chatId: data.id } });
+    } catch (err) {
+      console.error(err);
+      message.error('Не удалось открыть чат');
+    }
   };
 
   const openProfile = (userId, e) => {
     e.stopPropagation();
-    nav(`/profile/${userId}`);
+    nav(`/profile/${userId}`, { state: { from: '/' } });
   };
 
   const hideUser = async (userId, e) => {
     e.stopPropagation();
-    
+
     try {
-      // Оптимистичное обновление интерфейса: сразу убираем из списка
       setUsers(prev => prev.filter(u => u.id !== userId));
-      
-      // Отправляем запрос на сервер
+
       await http.post(Endpoints.RECOMMENDATIONS.HIDE(userId));
       message.success('Пользователь скрыт');
     } catch (e) {
       message.error('Ошибка при скрытии');
-      // Если ошибка - можно вернуть пользователя обратно, но это редкость
       console.error(e);
     }
   };
@@ -203,7 +208,6 @@ export default function People() {
           <Title level={3} style={{ margin: 0 }}>
             Рекомендации
           </Title>
-          <Text type="secondary">Сортировка по совместимости интересов</Text>
         </div>
 
         <Input
@@ -234,8 +238,8 @@ export default function People() {
                   size={72}
                   src={profile.avatar_url}
                   icon={<UserOutlined />}
-                  style={{ 
-                    background: profile.avatar_url ? 'transparent' : '#f0f0f0', 
+                  style={{
+                    background: profile.avatar_url ? 'transparent' : '#f0f0f0',
                     color: '#000',
                     border: '2px solid #f0f0f0'
                   }}
@@ -296,8 +300,8 @@ export default function People() {
       </Row>
 
       {!filteredUsers.length && !loading && (
-        <div style={{ 
-          padding: 48, 
+        <div style={{
+          padding: 48,
           textAlign: 'center',
           background: '#fafafa',
           borderRadius: 12,
