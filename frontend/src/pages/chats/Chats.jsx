@@ -254,7 +254,6 @@ export default function Chats() {
   const toUserId = location.state?.toUserId;
   const isMobile = useMediaQuery({ query: '(max-width: 767px)' });
 
-  // Load chat list
   useEffect(() => {
     let alive = true;
     async function loadChats() {
@@ -274,7 +273,6 @@ export default function Chats() {
     return () => { alive = false; };
   }, [message]);
 
-  // Handle opening a chat from recommendation or list
   useEffect(() => {
     if (!toUserId) return;
     
@@ -288,7 +286,6 @@ export default function Chats() {
     }
     
     if (toUserId && chatList.length > 0) {
-      // Ищем чат в списке
       const existingChat = chatList.find(chat => 
         chat.participant.id === toUserId
       );
@@ -296,13 +293,11 @@ export default function Chats() {
       if (existingChat) {
         setSelectedChat(existingChat);
       } else {
-        // Если чата нет в списке, создаем его
         openChatFromNav();
       }
     }
   }, [toUserId, chatList, message]);
   
-  // Load messages for selected chat
   useEffect(() => {
     if (!selectedChat) return;
     
@@ -321,7 +316,6 @@ export default function Chats() {
     return () => { alive = false; };
   }, [selectedChat, message]);
 
-  // WebSocket connection
   useEffect(() => {
     if (!selectedChat) return;
     const token = getAuthToken();
@@ -357,7 +351,6 @@ export default function Chats() {
     }
   };
 
-  // Фильтрация чатов по поиску
   const filteredChatList = useMemo(() => {
     if (!searchQuery.trim()) return chatList;
     
