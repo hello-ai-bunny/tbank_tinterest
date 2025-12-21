@@ -13,7 +13,6 @@ export default function Shell() {
 
   useEffect(() => {
     const user = localStorage.getItem(AUTH_KEY);
-
     if (!user) {
       nav('/auth', { replace: true });
       return;
@@ -23,11 +22,6 @@ export default function Shell() {
 
     if (done && loc.pathname === '/onboarding') {
       nav('/', { replace: true });
-      return;
-    }
-
-    if (!done && loc.pathname !== '/onboarding') {
-      nav('/onboarding', { replace: true });
     }
   }, [loc.pathname, nav]);
 
