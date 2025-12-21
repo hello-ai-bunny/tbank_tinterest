@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Avatar, Button, Card, Divider, Space, Tag, Typography, 
-  Empty, Spin, Row, Col, App as AntApp 
+import {
+  Avatar, Button, Card, Divider, Space, Tag, Typography,
+  Empty, Spin, Row, Col, App as AntApp
 } from 'antd';
-import { 
-  LeftOutlined, EnvironmentOutlined, 
+import {
+  LeftOutlined, EnvironmentOutlined,
   MessageOutlined, UserOutlined, MailOutlined
 } from '@ant-design/icons';
 import http from '../../shared/api/http';
@@ -29,10 +29,10 @@ export default function UserProfile() {
       try {
         const { data } = await http.get(`${Endpoints.USERS.LIST}?include_all=true`);
         if (alive) {
-          const foundUser = Array.isArray(data) 
+          const foundUser = Array.isArray(data)
             ? data.find(u => u.id === id)
             : null;
-          
+
           if (foundUser) {
             setUser(foundUser);
           }
@@ -43,7 +43,7 @@ export default function UserProfile() {
         if (alive) setLoading(false);
       }
     }
-    
+
     loadUser();
     return () => { alive = false; };
   }, [id, message]);
@@ -53,8 +53,15 @@ export default function UserProfile() {
     else nav('/', { replace: true });
   };
 
-  const goChat = () => {
-    nav('/chats', { state: { toUserId: id } });
+  const goChat = async () => {
+    try {
+      const { data } = await http.get(Endpoints.CHATS.WITH_USER(id));
+
+      nav('/chats', { state: { chatId: data.id } });
+    } catch (error) {
+      console.error(error);
+      message.error('Не удалось открыть чат');
+    }
   };
 
   if (loading) {
@@ -71,7 +78,7 @@ export default function UserProfile() {
         <Button shape="round" icon={<LeftOutlined />} onClick={goBack} style={{ width: 'fit-content' }}>
           Назад
         </Button>
-        <Card bordered={false}>
+        <Card variant="outlined">
           <Empty description="Пользователь не найден" />
         </Card>
       </Space>
@@ -87,18 +94,18 @@ export default function UserProfile() {
 
   return (
     <Space direction="vertical" size={16} style={{ width: '100%' }}>
-      <Button 
-        shape="round" 
-        icon={<LeftOutlined />} 
-        onClick={goBack} 
+      <Button
+        shape="round"
+        icon={<LeftOutlined />}
+        onClick={goBack}
         style={{ width: 'fit-content' }}
       >
         Назад
       </Button>
 
-      <Card 
-        bordered={false} 
-        style={{ 
+      <Card
+        variant="outlined"
+        style={{
           borderRadius: 16,
           border: '1px solid #f0f0f0',
           boxShadow: '0 4px 18px rgba(0,0,0,.04)'
@@ -110,20 +117,20 @@ export default function UserProfile() {
               size={92}
               src={profile.avatar_url}
               icon={!profile.avatar_url && <UserOutlined />}
-              style={{ 
-                background: profile.avatar_url ? 'transparent' : '#f0f0f0', 
+              style={{
+                background: profile.avatar_url ? 'transparent' : '#f0f0f0',
                 color: '#000',
                 border: '3px solid #f0f0f0'
               }}
             />
           </Col>
-          
+
           <Col flex="auto">
             <Space direction="vertical" size={8}>
               <Title level={3} style={{ margin: 0 }}>
                 {fullName}
               </Title>
-              
+
               <Space size={16} wrap>
                 {city && (
                   <Space size={4}>
@@ -131,7 +138,7 @@ export default function UserProfile() {
                     <Text type="secondary">{city}</Text>
                   </Space>
                 )}
-                
+
                 {email && (
                   <Space size={4}>
                     <MailOutlined />
@@ -141,13 +148,13 @@ export default function UserProfile() {
               </Space>
             </Space>
           </Col>
-          
+
           <Col>
-            <Button 
-              type="primary" 
-              icon={<MessageOutlined />} 
+            <Button
+              type="primary"
+              icon={<MessageOutlined />}
               onClick={goChat}
-              style={{ 
+              style={{
                 minWidth: 140,
                 background: 'var(--accent)',
                 borderColor: 'var(--accent)',
@@ -166,9 +173,9 @@ export default function UserProfile() {
         <div style={{ marginBottom: 24 }}>
           <Title level={4} style={{ marginBottom: 12 }}>Обо мне</Title>
           {about ? (
-            <Text style={{ 
-              lineHeight: 1.6, 
-              display: 'block', 
+            <Text style={{
+              lineHeight: 1.6,
+              display: 'block',
               whiteSpace: 'pre-wrap',
               fontSize: 15,
               padding: 16,
@@ -178,7 +185,7 @@ export default function UserProfile() {
               {about}
             </Text>
           ) : (
-            <Text type="secondary" style={{ 
+            <Text type="secondary" style={{
               padding: 16,
               background: '#fafafa',
               borderRadius: 12,
