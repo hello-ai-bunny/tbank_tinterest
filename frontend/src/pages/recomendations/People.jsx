@@ -17,26 +17,29 @@ export default function People() {
 
   useEffect(() => {
     let alive = true;
-    async function loadUsers() {
+    async function loadRecommendations() {
       setLoading(true);
       try {
-        const { data } = await http.get(Endpoints.USERS.LIST);
+        const { data } = await http.get(Endpoints.RECOMMENDATIONS.LIST);
         if (alive) {
           setUsers(Array.isArray(data) ? data : []);
         }
       } catch (e) {
-        message.error('Не удалось загрузить список пользователей');
+        message.error('Не удалось загрузить рекомендации');
+        console.error(e);
       } finally {
         if (alive) setLoading(false);
       }
     }
-    loadUsers();
+    loadRecommendations();
     return () => { alive = false; };
   }, [message]);
 
   const filteredUsers = useMemo(() => {
     const q = query.trim().toLowerCase();
+    
     if (!q) return users;
+
     return users.filter((user) => {
       const profile = user.profile || {};
       const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim().toLowerCase();
@@ -55,9 +58,18 @@ export default function People() {
     nav(`/profile/${userId}`);
   };
 
-  const hideUser = (userId, e) => {
+  const hideUser = async (userId, e) => {
     e.stopPropagation();
-    message.success('Пользователь скрыт');
+    
+    try {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      
+      await http.post(Endpoints.RECOMMENDATIONS.HIDE(userId));
+      message.success('Пользователь скрыт');
+    } catch (e) {
+      message.error('Ошибка при скрытии');
+      console.error(e);
+    }
   };
 
   if (loading) {
@@ -84,8 +96,6 @@ export default function People() {
           cursor: pointer;
           height: 100%;
           transition: transform 0.2s, box-shadow 0.2s;
-          display: flex;
-          flex-direction: column;
         }
 
         .tCard:hover {
@@ -99,17 +109,6 @@ export default function People() {
           flex-direction: column;
           align-items: center;
           gap: 12px;
-          flex: 1;
-          width: 100%;
-        }
-
-        .tAvatarSection {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 8px;
-          width: 100%;
-          flex-shrink: 0;
         }
 
         .tName { 
@@ -118,13 +117,6 @@ export default function People() {
           line-height: 1.2;
           font-size: 16px;
           margin: 0;
-          width: 100%;
-          height: 38px; 
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          text-overflow: ellipsis;
         }
         
         .tCity { 
@@ -133,21 +125,21 @@ export default function People() {
           text-align: center;
           display: flex;
           align-items: center;
-          justify-content: center;
           gap: 4px;
           margin: 0;
-          height: 20px; 
-          width: 100%;
-          flex-shrink: 0;
         }
 
-        .tChipsContainer {
-          width: 100%;
-          flex: 1;
-          min-height: 60px;
-          max-height: 60px;
-          overflow: hidden;
-          position: relative;
+        .tMatch {
+          border: 0;
+          background: var(--accent) !important;
+          color: #000 !important;
+          border-radius: 999px;
+          padding: 6px 14px;
+          font-size: 13px;
+          font-weight: 700;
+          line-height: 1;
+          min-width: 60px;
+          text-align: center;
         }
 
         .tChips {
@@ -155,9 +147,7 @@ export default function People() {
           gap: 6px;
           flex-wrap: wrap;
           justify-content: center;
-          width: 100%;
-          max-height: 55px; 
-          overflow: hidden;
+          min-height: 26px;
         }
 
         .tChip {
@@ -168,18 +158,15 @@ export default function People() {
           border: 1px solid #ededed;
           color: rgba(0,0,0,.75);
           user-select: none;
-          flex-shrink: 0;
-          line-height: 1.3;
         }
 
         .tActions {
           width: 100%;
+          margin-top: 4px;
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 8px;
-          flex-shrink: 0;
-          margin-top: auto;
         }
 
         .tWriteBtn {
@@ -198,40 +185,21 @@ export default function People() {
           height: auto !important;
           color: rgba(0,0,0,.5) !important;
           font-size: 12px !important;
-          width: 100%;
-          text-align: center;
         }
         
         .tHideBtn:hover { 
           color: rgba(0,0,0,.75) !important; 
           background: transparent !important;
         }
-
-        .tEmptyCity {
-          opacity: 0.3;
-          font-size: 13px;
-          height: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .tEmptyInterests {
-          opacity: 0.3;
-          font-size: 11px;
-          padding: 3px 10px;
-          border-radius: 999px;
-          background: #f5f5f5;
-          border: 1px dashed #e0e0e0;
-          color: rgba(0,0,0,.75);
-          line-height: 1.3;
-        }
       `}</style>
 
       <div className="tRecsTop">
-        <Title level={3} style={{ margin: 0 }}>
-          Пользователи
-        </Title>
+        <div>
+          <Title level={3} style={{ margin: 0 }}>
+            Рекомендации
+          </Title>
+          <Text type="secondary">Сортировка по совместимости интересов</Text>
+        </div>
 
         <Input
           allowClear
@@ -247,58 +215,52 @@ export default function People() {
         {filteredUsers.map((user) => {
           const profile = user.profile || {};
           const fullName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.email;
+          const compatibility = user.compatibility || 0;
           const interests = user.interests || [];
-          const displayCity = profile.city || null;
 
           return (
             <Col key={user.id} xs={24} sm={12} md={8} lg={6}>
               <Card
                 className="tCard"
+                bordered={false}
                 onClick={(e) => openProfile(user.id, e)}
               >
-                <div className="tAvatarSection">
-                  <Avatar
-                    size={72}
-                    src={profile.avatar_url}
-                    icon={<UserOutlined />}
-                    style={{ 
-                      background: profile.avatar_url ? 'transparent' : '#f0f0f0', 
-                      color: '#000',
-                      border: '2px solid #f0f0f0'
-                    }}
-                  >
-                    {fullName?.[0]?.toUpperCase()}
-                  </Avatar>
+                <Avatar
+                  size={72}
+                  src={profile.avatar_url}
+                  icon={<UserOutlined />}
+                  style={{ 
+                    background: profile.avatar_url ? 'transparent' : '#f0f0f0', 
+                    color: '#000',
+                    border: '2px solid #f0f0f0'
+                  }}
+                >
+                  {fullName?.[0]?.toUpperCase()}
+                </Avatar>
 
-                  <div className="tName" title={fullName}>
-                    {fullName}
-                  </div>
+                <div className="tName">{fullName}</div>
 
+                {profile.city && (
                   <div className="tCity">
-                    {displayCity ? (
-                      <>
-                        <EnvironmentOutlined /> {displayCity}
-                      </>
-                    ) : (
-                      <span className="tEmptyCity">Город не указан</span>
-                    )}
+                    <EnvironmentOutlined /> {profile.city}
                   </div>
+                )}
+
+                <div className="tMatch">
+                  Совпадение {compatibility}%
                 </div>
 
-                <div className="tChipsContainer">
-                  <div className="tChips">
-                    {interests.length > 0 ? (
-                      interests.slice(0, 6).map((interest) => (
-                        <span key={interest.id} className="tChip">
-                          {interest.name}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="tEmptyInterests">
-                        Нет интересов
-                      </span>
-                    )}
-                  </div>
+                <div className="tChips">
+                  {interests.slice(0, 4).map((interest) => (
+                    <span key={interest.id} className="tChip">
+                      {interest.name}
+                    </span>
+                  ))}
+                  {interests.length > 4 && (
+                    <span className="tChip">
+                      +{interests.length - 4}
+                    </span>
+                  )}
                 </div>
 
                 <div className="tActions">
@@ -341,7 +303,7 @@ export default function People() {
             Пользователи не найдены
           </Title>
           <Text type="secondary">
-            Попробуйте изменить поисковый запрос
+            Попробуйте изменить поисковый запрос или зайдите позже
           </Text>
         </div>
       )}

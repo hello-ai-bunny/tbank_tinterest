@@ -11,7 +11,6 @@ import { Endpoints } from '../../shared/api/endpoints';
 
 const { Title, Text } = Typography;
 
-// Helper functions for image upload
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -43,15 +42,12 @@ export default function Questionnaire() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Data from backend
   const [cities, setCities] = useState([]);
   const [allInterests, setAllInterests] = useState([]);
 
-  // Form state
   const [avatarUrl, setAvatarUrl] = useState('');
   const [selectedIds, setSelectedIds] = useState(() => new Set());
 
-  // Group interests fetched from backend
   const groupedInterests = useMemo(() => {
     const map = new Map(); // group -> items
     for (const it of allInterests) {
@@ -81,7 +77,7 @@ export default function Questionnaire() {
       try {
         const [interestsRes, citiesRes, meRes, myInterestsRes] = await Promise.all([
           http.get(Endpoints.SURVEY.INTERESTS),
-          http.get('/cities'), 
+          http.get('/cities'),
           http.get(Endpoints.USERS.ME),
           http.get(Endpoints.SURVEY.MY_INTERESTS),
         ]);
@@ -90,8 +86,7 @@ export default function Questionnaire() {
 
         setAllInterests(Array.isArray(interestsRes.data) ? interestsRes.data : []);
         setCities(Array.isArray(citiesRes.data) ? citiesRes.data : []);
-        
-        // Set profile data
+
         const profile = meRes.data?.profile ?? {};
         form.setFieldsValue({
           firstName: profile.first_name || '',
@@ -103,7 +98,6 @@ export default function Questionnaire() {
         });
         setAvatarUrl(profile.avatar_url || '');
 
-        // Set user's interests
         const interestIds = Array.isArray(myInterestsRes.data)
           ? myInterestsRes.data.map((i) => i.id)
           : [];
@@ -130,7 +124,6 @@ export default function Questionnaire() {
         message.success('Фото загружено (url сохранён)');
         return false;
       }
-      // Fallback to data URL if ImgBB fails or is not configured
       const dataUrl = await fileToBase64(file);
       setAvatarUrl(dataUrl);
       message.success('Фото добавлено (data URL)');
@@ -149,21 +142,20 @@ export default function Questionnaire() {
         message.warning('Выберите хотя бы один интерес');
         return;
       }
-      
+
       setSaving(true);
 
-      // Save profile and interests in parallel
       await Promise.all([
         http.patch(Endpoints.USERS.ME, {
-          first_name: values.firstName,
-          last_name: values.lastName,
-          email: values.email,
-          telegram: values.telegram,
+          first_name: values.firstName?.trim(),
+          last_name: values.lastName?.trim() || null,
+          email: values.email?.trim() || null,
+          telegram: values.telegram?.trim() || null,
           city: values.city,
-          about: values.about || null,
+          about: values.about?.trim() || null,
           avatar_url: avatarUrl || null,
         }),
-        http.put(Endpoints.SURVEY.MY_INTERESTS, ids)
+        http.put(Endpoints.SURVEY.MY_INTERESTS, Array.from(selectedIds)),
       ]);
 
       localStorage.setItem('onboardingDone', '1');
@@ -260,6 +252,7 @@ export default function Questionnaire() {
                           const active = selectedIds.has(it.id);
                           return (
                             <Tag.CheckableTag
+                              style={{ borderRadius: 16 }}
                               key={it.id}
                               checked={active}
                               onChange={() => toggleInterest(it.id)}
@@ -275,7 +268,7 @@ export default function Questionnaire() {
               </Row>
               <div style={{ height: 18 }} />
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <Button type="primary" size="large" style={{ minWidth: 220 }} loading={saving} onClick={save}>
+                <Button type="primary" size="large" style={{ minWidth: 220, borderRadius: 20 }} loading={saving} onClick={save}>
                   Сохранить
                 </Button>
               </div>
