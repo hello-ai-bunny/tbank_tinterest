@@ -7,6 +7,10 @@ export const Endpoints = {
         ME: '/users/me',
         LIST: '/users',
     },
+    RECOMMENDATIONS: {
+        LIST: '/recommendations',
+        HIDE: (id) => `/recommendations/${id}/hide`,
+    },
     SURVEY: {
         INTERESTS: '/survey/interests',
         MY_INTERESTS: '/survey/me/interests',
