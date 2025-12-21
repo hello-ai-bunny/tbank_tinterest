@@ -17,7 +17,8 @@ export const Endpoints = {
     },
     CHATS: {
         LIST: '/chats',
-        BASE: '/chats',
+        WITH_USER: (userId) => `/chats/${userId}`,
+        MESSAGES: (chatId) => `/chats/${chatId}/messages`,
         WS: '/ws/chats',
     },
 };
