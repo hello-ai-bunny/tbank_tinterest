@@ -15,27 +15,19 @@ async function checkOnboardingComplete() {
       http.get(Endpoints.SURVEY.MY_INTERESTS),
     ]);
 
-    const meData = meRes?.data ?? {};
-    const profile = meData.profile ?? meData; 
+    const profile = meRes?.data?.profile ?? meRes?.data ?? {};
 
-    const fullName = String(profile.full_name ?? '').trim();
+    const firstName = String(profile.first_name ?? '').trim();
     const city = String(profile.city ?? '').trim();
 
     const raw = interestsRes?.data;
+    const ids = Array.isArray(raw)
+      ? raw.map((x) => x?.id).filter(Boolean)
+      : Array.isArray(raw?.interest_ids)
+        ? raw.interest_ids.filter(Boolean)
+        : [];
 
-    let ids = [];
-    if (Array.isArray(raw)) {
-      ids = raw
-        .map((x) => (typeof x === 'number' ? x : x?.id))
-        .filter(Boolean);
-    } else if (Array.isArray(raw?.interest_ids)) {
-      ids = raw.interest_ids.filter(Boolean);
-    }
-
-    const hasProfile = fullName.length > 0 && city.length > 0;
-    const hasInterests = ids.length > 0;
-
-    return hasProfile && hasInterests;
+    return firstName.length > 0 && city.length > 0 && ids.length > 0;
   } catch {
     return false;
   }
@@ -57,20 +49,26 @@ export default function Auth() {
     nav(done ? '/' : '/onboarding', { replace: true });
   };
 
-  const doLogin = async () => {
+    const doLogin = async () => {
     if (!trimmed) return message.warning('Введите логин');
+
     try {
       const { data } = await http.post(Endpoints.AUTH.LOGIN, { login: trimmed });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       jwtDecode(data.access_token);
+
       message.success('Вход выполнен');
-      await afterAuthRoute();
+
+      const done = await checkOnboardingComplete();
+      localStorage.setItem('onboardingDone', done ? '1' : '0');
+
+      nav('/', { replace: true });
     } catch (error) {
       message.error(error.response?.data?.detail || 'Ошибка входа');
     }
   };
 
-  const doRegister = async () => {
+ const doRegister = async () => {
     if (!trimmed) return message.warning('Введите логин');
     if (!agree) return message.warning('Нужно согласиться с условиями');
 
@@ -78,12 +76,16 @@ export default function Auth() {
       const { data } = await http.post(Endpoints.AUTH.REGISTER, { login: trimmed });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       jwtDecode(data.access_token);
+
       message.success('Аккаунт создан');
-      await afterAuthRoute();
+
+      localStorage.setItem('onboardingDone', '0');
+      nav('/onboarding', { replace: true });
     } catch (error) {
       message.error(error.response?.data?.detail || 'Ошибка регистрации');
     }
   };
+
 
   return (
     <div className="auth">
