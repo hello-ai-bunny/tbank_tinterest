@@ -215,7 +215,7 @@ export default function Questionnaire() {
                   </Form.Item>
                 </Col>
                 <Col xs={24} md={12}>
-                  <Form.Item label="Email" name="email">
+                  <Form.Item label="Email" name="email" rules={[{ type: 'email', message: 'Введите корректный email' }]}>
                     <Input placeholder="elena@example.com" />
                   </Form.Item>
                 </Col>
