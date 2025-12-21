@@ -61,7 +61,7 @@ export default function People() {
       console.error(err);
       message.error('Не удалось открыть чат');
     }
-  };
+  }; 
 
   const openProfile = (userId, e) => {
     e.stopPropagation();
