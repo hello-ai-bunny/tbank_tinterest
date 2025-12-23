@@ -63,7 +63,8 @@ export default function People() {
 
   const openProfile = (userId, e) => {
     e.stopPropagation();
-    nav(`/profile/${userId}`, { state: { from: '/' } });
+    nav(`/profile/${userId}`, { state: { from: '/', 
+      user: users.find(u => u.id === userId) } });
   };
 
   const hideUser = async (userId, e) => {
@@ -104,6 +105,8 @@ export default function People() {
           cursor: pointer;
           height: 100%;
           transition: transform 0.2s, box-shadow 0.2s;
+          display: flex;
+          flex-direction:column;
         }
 
         .tCard:hover {
@@ -117,6 +120,16 @@ export default function People() {
           flex-direction: column;
           align-items: center;
           gap: 12px;
+          flex:1;
+          width:100%;
+        }
+        .tAvatarSection {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          flex-shrink: 0;
         }
 
         .tName { 
@@ -125,6 +138,12 @@ export default function People() {
           line-height: 1.2;
           font-size: 16px;
           margin: 0;
+          height: 38px; 
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         
         .tCity { 
@@ -133,8 +152,12 @@ export default function People() {
           text-align: center;
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 4px;
           margin: 0;
+          height: 20px; 
+          width: 100%;
+          flex-shrink: 0;
         }
 
         .tMatch {
@@ -149,13 +172,23 @@ export default function People() {
           min-width: 60px;
           text-align: center;
         }
+        .tChipsContainer {
+          width: 100%;
+          flex: 1;
+          min-height: 60px;
+          max-height: 60px;
+          overflow: hidden;
+          position: relative;
+        }
 
         .tChips {
           display: flex;
           gap: 6px;
           flex-wrap: wrap;
           justify-content: center;
-          min-height: 26px;
+          width: 100%;
+          max-height: 55px; 
+          overflow: hidden;
         }
 
         .tChip {
@@ -166,15 +199,18 @@ export default function People() {
           border: 1px solid #ededed;
           color: rgba(0,0,0,.75);
           user-select: none;
+          flex-shrink: 0;
+          line-height: 1.3;
         }
 
         .tActions {
           width: 100%;
-          margin-top: 4px;
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 8px;
+          flex-shrink: 0;
+          margin-top: auto;
         }
 
         .tWriteBtn {

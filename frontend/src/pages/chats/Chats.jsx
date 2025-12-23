@@ -13,6 +13,8 @@ const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Header, Content } = Layout;
 
+const MAX_MESSAGE_LENGTH = 2000;
+
 function getAuthToken() {
   try {
     const raw = localStorage.getItem('authUser');
@@ -41,7 +43,12 @@ const ChatList = ({ chatList, selectedChat, onSelectChat, searchQuery, onSearchC
   
   const openUserProfile = (userId, e) => {
     e.stopPropagation();
-    navigate(`/profile/${userId}`);
+    navigate(`/profile/${userId}`, { 
+    state: { 
+      from: '/chats', 
+      chatId: selectedChat?.id 
+    } 
+  });
   };
 
   return (
@@ -133,12 +140,23 @@ const ChatWindow = ({ chat, messages, currentUserId, onSendMessage, onBack }) =>
 
   const handleSend = () => {
     if (!messageText.trim()) return;
+
+    if (messageText.length > MAX_MESSAGE_LENGTH) {
+      antMessage.warning(`Сообщение слишком длинное. Максимум ${MAX_MESSAGE_LENGTH} символов.`);
+      return;
+    }
+
     onSendMessage(messageText);
     setMessageText('');
   };
 
   const openUserProfile = () => {
-    navigate(`/profile/${chat.participant.id}`);
+    navigate(`/profile/${chat.participant.id}`, { 
+      state: { 
+        from: '/chats',
+        chatId: chat.id, 
+      } 
+    });
   };
 
   return (
@@ -232,6 +250,14 @@ const ChatWindow = ({ chat, messages, currentUserId, onSendMessage, onBack }) =>
             disabled={!messageText.trim()} 
           />
         </Space.Compact>
+        <div style={{ 
+          marginTop: 4, 
+          fontSize: 12, 
+          color: messageText.length > MAX_MESSAGE_LENGTH ? '#ff4d4f' : '#999',
+          textAlign: 'right'
+        }}>
+          {messageText.length}/{MAX_MESSAGE_LENGTH}
+        </div>
       </div>
     </Layout>
   );
@@ -282,7 +308,6 @@ export default function Chats() {
     return () => { alive = false; };
   }, [message, chatIdFromState]);
 
-  // Загрузка сообщений выбранного чата
   useEffect(() => {
     if (!selectedChat) return;
     

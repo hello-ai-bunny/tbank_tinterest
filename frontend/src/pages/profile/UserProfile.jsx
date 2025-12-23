@@ -22,6 +22,22 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
 
+  const fromPage = useMemo(() => {
+    if (location.state?.from) {
+      return location.state.from;
+    }
+    
+    if (document.referrer) {
+      const referrer = new URL(document.referrer);
+      const path = referrer.pathname;
+      
+      if (path.includes('/chats')) return '/chats';
+      if (path === '/') return '/';
+    }
+    
+    return '/';
+  }, [location.state]);
+
   useEffect(() => {
     let alive = true;
     async function loadUser() {
@@ -49,15 +65,16 @@ export default function UserProfile() {
   }, [id, message]);
 
   const goBack = () => {
-    if (location.state?.from) nav(-1);
-    else nav('/', { replace: true });
+    nav(fromPage);
   };
 
   const goChat = async () => {
     try {
       const { data } = await http.get(Endpoints.CHATS.WITH_USER(id));
 
-      nav('/chats', { state: { chatId: data.id } });
+      nav('/chats', { state: { chatId: data.id,
+          fromProfile: true,
+          profileUserId: id } });
     } catch (error) {
       console.error(error);
       message.error('Не удалось открыть чат');
@@ -74,7 +91,7 @@ export default function UserProfile() {
 
   if (!user) {
     return (
-      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={16} style={{ width: '100%' }}>
         <Button shape="round" icon={<LeftOutlined />} onClick={goBack} style={{ width: 'fit-content' }}>
           Назад
         </Button>
@@ -93,7 +110,7 @@ export default function UserProfile() {
   const interests = user.interests || [];
 
   return (
-    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
       <Button
         shape="round"
         icon={<LeftOutlined />}
@@ -126,7 +143,7 @@ export default function UserProfile() {
           </Col>
 
           <Col flex="auto">
-            <Space direction="vertical" size={8}>
+            <Space orientation="vertical" size={8}>
               <Title level={3} style={{ margin: 0 }}>
                 {fullName}
               </Title>
