@@ -234,6 +234,7 @@ export default function Settings() {
       });
 
       message.success('Профиль сохранён');
+      window.dispatchEvent(new Event('meProfileUpdated'));
     } catch (e) {
       message.error(e?.response?.data?.detail || 'Ошибка сохранения профиля');
     } finally {

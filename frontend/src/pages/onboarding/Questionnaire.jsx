@@ -160,6 +160,7 @@ export default function Questionnaire() {
 
       localStorage.setItem('onboardingDone', '1');
       message.success('Анкета сохранена');
+      window.dispatchEvent(new Event('meProfileUpdated'));
       nav('/', { replace: true });
 
     } catch (e) {
