@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Layout, Menu, Dropdown, Avatar, Typography } from 'antd';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
-import { TeamOutlined, MessageOutlined } from '@ant-design/icons';
+import { TeamOutlined, MessageOutlined, UserOutlined } from '@ant-design/icons';
 
+import http from '../../shared/api/http';
+import { Endpoints } from '../../shared/api/endpoints';
 
 const AUTH_KEY = 'authUser';
 
@@ -10,6 +12,17 @@ export default function Shell() {
   const { Header, Sider, Content } = Layout;
   const nav = useNavigate();
   const loc = useLocation();
+
+  const [me, setMe] = useState(null);
+
+  const loadMe = useCallback(async () => {
+    try {
+      const { data } = await http.get(Endpoints.USERS.ME);
+      setMe(data ?? null);
+    } catch {
+      setMe(null);
+    }
+  }, []);
 
   useEffect(() => {
     const user = localStorage.getItem(AUTH_KEY);
@@ -19,11 +32,19 @@ export default function Shell() {
     }
 
     const done = localStorage.getItem('onboardingDone') === '1';
-
     if (done && loc.pathname === '/onboarding') {
       nav('/', { replace: true });
+      return;
     }
-  }, [loc.pathname, nav]);
+
+    loadMe();
+  }, [loc.pathname, nav, loadMe]);
+
+  useEffect(() => {
+    const handler = () => loadMe();
+    window.addEventListener('meProfileUpdated', handler);
+    return () => window.removeEventListener('meProfileUpdated', handler);
+  }, [loadMe]);
 
   const selectedKey = loc.pathname.startsWith('/chats') ? 'chats' : 'recs';
 
@@ -42,6 +63,14 @@ export default function Shell() {
     ],
   };
 
+  const profile = useMemo(() => (me?.profile ?? me ?? {}), [me]);
+  const avatarUrl = profile?.avatar_url || '';
+  const fallbackLetter = (profile?.first_name || profile?.email || 'U')
+    .toString()
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
@@ -57,8 +86,8 @@ export default function Shell() {
           mode="inline"
           selectedKeys={[selectedKey]}
           items={[
-            { key: 'recs', label: <Link to="/">{<TeamOutlined />} Рекомендации</Link> },
-            { key: 'chats', label: <Link to="/chats">{<MessageOutlined />} Чаты</Link> },
+            { key: 'recs', label: <Link to="/"><TeamOutlined /> Рекомендации</Link> },
+            { key: 'chats', label: <Link to="/chats"><MessageOutlined /> Чаты</Link> },
           ]}
         />
       </Sider>
@@ -76,13 +105,15 @@ export default function Shell() {
           <Dropdown menu={profileMenu} trigger={['click']}>
             <Avatar
               size="large"
+              src={avatarUrl || undefined}
+              icon={!avatarUrl ? <UserOutlined /> : undefined}
               style={{
                 cursor: 'pointer',
-                background: '#fed400',
+                background: avatarUrl ? 'transparent' : '#fed400',
                 color: '#000',
               }}
             >
-              U
+              {!avatarUrl ? fallbackLetter : null}
             </Avatar>
           </Dropdown>
         </Header>
