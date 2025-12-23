@@ -12,4 +12,4 @@ RUN . .venv/bin/activate && uv sync --no-cache
 
 COPY . .
 
-CMD ["sh", "-c", ". .venv/bin/activate && alembic upgrade head && python main.py"]
+CMD ["sh", "-c", ". .venv/bin/activate && python main.py"]
