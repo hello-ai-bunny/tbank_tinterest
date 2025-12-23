@@ -23,7 +23,7 @@ class Profile(Base):
     telegram = Column(String(120))
     city = Column(String(120))
     about = Column(Text)
-    avatar_url = Column(String(500))
+    avatar_url = Column(Text)
     visibility = Column(
         SQLEnum(VisibilityEnum, name="profile_vis_enum"),
         nullable=False,

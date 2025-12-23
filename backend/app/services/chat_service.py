@@ -1,9 +1,8 @@
-from sqlalchemy.orm import joinedload, aliased
+from sqlalchemy.orm import joinedload
 from sqlalchemy import or_
 from ..core.websockets import manager
 from ..data.db import db_conn
 from ..data.models.user import User
-from ..data.models.profile import Profile
 from ..data.models.chat import Chat, ChatType
 from ..data.models.message import Message
 from ..schemas.chat_schemas import MessageCreate, MessageResponse

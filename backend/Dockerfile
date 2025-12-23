@@ -1,0 +1,15 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+RUN pip install uv
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv venv
+
+RUN . .venv/bin/activate && uv sync --no-cache
+
+COPY . .
+
+CMD ["sh", "-c", ". .venv/bin/activate && alembic upgrade head && python main.py"]
